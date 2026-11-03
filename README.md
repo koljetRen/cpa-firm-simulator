@@ -2,13 +2,21 @@
 
 A browser game where you build an accounting firm from a one-person practice toward the IPA 500: win clients, price services, hire staff, open offices, and acquire other firms month by month.
 
-Version 2.11.0: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, and staff levels, the integration pause and smaller saves.
+Version 2.12.0: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, staff levels, the integration pause, smaller saves and partners.
 
 ## Play
 
 Open `index.html` in any modern browser. There's no build step and no server.
 
 To host it online, enable **GitHub Pages** (Settings → Pages → Deploy from a branch → `main` / root). The game will be at `https://<username>.github.io/cpa-firm-simulator/`.
+
+## What's new in 2.12.0
+
+- **Partners.** Directors are now partners, and you are the managing partner. Each month the firm keeps 75% of its profit before partner pay and pays 25% to its partners, split evenly. Every partner gets at least $150,000 a year; yours starts once yearly revenue passes $1M. A month that loses money pays no share, and the loss is made up from the next good months before partners share profit again. The People tab shows each partner's pay over their last 12 months as a partner.
+- **Partner leads.** Each partner other than you brings about 2 extra leads a month to their department's services.
+- **CAS Tiers 3–6 take 50% more hours per client** (540, 720, 1,080 and 1,350 hours a year).
+
+Every number is in Settings under Partners.
 
 ## What's new in 2.11.0
 

@@ -226,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.11.1'; // staff levels, integration pause, smaller saves; CAS Tiers 3–6 take 50% more hours
+  CPA.VERSION = '2.12.0'; // partners: directors share 25% of profit with a $150K minimum
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -428,7 +428,7 @@ main:has(.stickybar){padding-bottom:230px}
     const people = CPA.activePeople(s, t), offHeads = CPA.officeHeads(s, t);
     people.forEach(p => {
       const hc = p.hc || 1, role = CPA.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'], hrs = CPA.hoursOf(s, p, role);
-      payroll += (p.salary || 0) / 12 * hc; heads += hc;
+      if (!(CPA.partnerPaid && CPA.partnerPaid(s, role))) payroll += (p.salary || 0) / 12 * hc; heads += hc; // partners are paid from profit instead
       if (role[5] === 'Admin') { admH += hrs * hc * role[3]; adminStaff += hc; }
       else if (role[5] === 'None') { /* recruiters and HR: no client or admin work */ }
       else if (role[5] === 'Bookkeeper') bkH += hrs * hc * CPA.outputOf(s, p) * CPA.crowd(s, p, t, offHeads);
@@ -444,11 +444,12 @@ main:has(.stickybar){padding-bottom:230px}
     const Tm = Math.max(0, 1 - st.priceSens * price);
     const V = mkt / st.costPerLead;
     const mods = { lead: {}, churn: {} };
+    const xLeads = CPA.extraLeads ? CPA.extraLeads(s, t) : {}; // partners bring leads to their department
     CPA.hook('serviceMods', s, t).forEach(md => { if (!md) return; ['lead', 'churn'].forEach(k => Object.entries(md[k] || {}).forEach(([sl, v]) => { mods[k][sl] = (mods[k][sl] || 1) * v; })); });
     const pot = svcs.map((x, i) => {
       if (!on[i]) return 0;
       const ls = x.type === 'Seasonal' ? CPA.SEASONAL_LEADS[m - 1] : 1;
-      return (x.organic * ls + st.referralRate * x.clients + (W > 0 ? V * x.weight / W : 0)) * st.closeRate * growth * evLead * Tm * (mods.lead[x.slot] || 1);
+      return (x.organic * ls + st.referralRate * x.clients + (W > 0 ? V * x.weight / W : 0) + (xLeads[x.slot] || 0)) * st.closeRate * growth * evLead * Tm * (mods.lead[x.slot] || 1);
     });
     const Ntot = pot.reduce((a, p, i) => a + p * svcs[i].hpc, 0);
     const AD = prev.AA > 0 ? prev.AB / prev.AA : (adminStaff > 0 ? 0.2 : 1);
@@ -500,7 +501,10 @@ main:has(.stickybar){padding-bottom:230px}
     const opEx = payroll * (1 + st.payrollTax) + heads * st.softwarePerHead + mkt + evCost + officeCost + extraCost;
     let acqPay = 0;
     s.acqPlans.forEach(pl => { if (pl.monthsLeft > 0) { acqPay += pl.monthly; pl.monthsLeft -= 1; } });
-    const profit = revenue - opEx - acqPay;
+    const profitBefore = revenue - opEx - acqPay; // profit before partner pay
+    const partnerPay = CPA.partnerPayMonth ? CPA.partnerPayMonth(s, t, profitBefore) : 0;
+    const profit = profitBefore - partnerPay;
+    const pl = s.partner && s.partner.last && s.partner.last.t === t ? s.partner.last : null;
     const lastCash = s.history.log.length ? s.history.log[s.history.log.length - 1].cash : st.startingCash;
     const cash = lastCash + profit - s.pendingOut;
     s.pendingOut = 0;
@@ -516,7 +520,7 @@ main:has(.stickybar){padding-bottom:230px}
       t, y, m, label: CPA.monthLabel(s, t), marketing: mkt, price, growthRoll: gRoll, leadMult: growth, growthLabel: CPA.GROWTH[gRoll][1],
       eventRoll: eRoll, event: evName, eventEffects: { lead: evLead, churn: evChurn, cap: evCap, cost: evCost },
       staff: heads, capacityUsed, workload, newClients: newT, lostClients: lostT, totalClients: rows.reduce((a, r) => a + r.end, 0),
-      revenue, opEx, acqPay, profit, cash,
+      revenue, opEx, acqPay, profitBefore, partnerPay, youPay: pl ? pl.you : 0, partners: pl ? pl.n : 0, profit, cash,
       detail: { payroll, heads, cliH, admH, J, Z, P, Q, AA, AB, AC, O, Ntot, W, Tm, V, officeCost },
     };
     s.history.log.push(row);
@@ -611,7 +615,7 @@ main:has(.stickybar){padding-bottom:230px}
     const r = res.row;
     const changes = res.rows.map((x, i) => ({ name: s.services[i].short, new: x.new, lost: x.lost, end: x.end })).filter(x => x.new || x.lost);
     const extra = CPA.hook('summaryLines', s, r).flat();
-    return { title: r.label, t: r.t, label: r.label, event: r.event, eventRoll: r.eventRoll, eventEffects: r.eventEffects, growthRoll: r.growthRoll, growthLabel: r.growthLabel, leadMult: r.leadMult, newClients: r.newClients, lostClients: r.lostClients, totalClients: r.totalClients, changes, revenue: r.revenue, profit: r.profit, revT12: r.revT12, profitT12: r.profitT12, cash: r.cash, capacityUsed: r.capacityUsed, workload: r.workload, january: r.m === 1, officialRank: s.market.officialRank, extra };
+    return { title: r.label, t: r.t, label: r.label, event: r.event, eventRoll: r.eventRoll, eventEffects: r.eventEffects, growthRoll: r.growthRoll, growthLabel: r.growthLabel, leadMult: r.leadMult, newClients: r.newClients, lostClients: r.lostClients, totalClients: r.totalClients, changes, revenue: r.revenue, profit: r.profit, revT12: r.revT12, profitT12: r.profitT12, cash: r.cash, capacityUsed: r.capacityUsed, workload: r.workload, january: r.m === 1, partner: (s.partner && s.partner.last && s.partner.last.t === r.t) ? s.partner.last : null, officialRank: s.market.officialRank, extra };
   };
   CPA.periodSummary = function (s, months) {
     return { months: months.map(x => ({ label: x.label, event: x.event, newClients: x.newClients, lostClients: x.lostClients, revenue: x.revenue, profit: x.profit })), newClients: months.reduce((a, x) => a + x.newClients, 0), lostClients: months.reduce((a, x) => a + x.lostClients, 0), revenue: months.reduce((a, x) => a + x.revenue, 0), profit: months.reduce((a, x) => a + x.profit, 0), cash: months[months.length - 1].cash, totalClients: months[months.length - 1].totalClients, from: months[0].label, to: months[months.length - 1].label, directors: s.history.directors.slice(-10) };
@@ -626,7 +630,7 @@ main:has(.stickybar){padding-bottom:230px}
     // You age a year at each year end (decided Nov 2, 2026); retirement rules don't apply to you.
     const you = s.people.find(p => p.id === 1); if (you) you.age += 1;
     const extra = CPA.hook('yearEnd', s, y, { busyWorkload }).flat().filter(Boolean);
-    CPA.pushCard(s, { type: 'info', kind: 'yearEnd', title: 'Year-end ' + y, data: { y, months: rows.length, revenue: rows.reduce((a, r) => a + r.revenue, 0), profit: rows.reduce((a, r) => a + r.profit, 0), newClients: rows.reduce((a, r) => a + r.newClients, 0), lostClients: rows.reduce((a, r) => a + r.lostClients, 0), busyWorkload, age: you ? you.age : null, extra } });
+    CPA.pushCard(s, { type: 'info', kind: 'yearEnd', title: 'Year-end ' + y, data: { y, months: rows.length, revenue: rows.reduce((a, r) => a + r.revenue, 0), profit: rows.reduce((a, r) => a + r.profit, 0), newClients: rows.reduce((a, r) => a + r.newClients, 0), lostClients: rows.reduce((a, r) => a + r.lostClients, 0), busyWorkload, age: you ? you.age : null, partnerPay: rows.reduce((a, r) => a + (r.partnerPay || 0), 0), youPay: rows.reduce((a, r) => a + (r.youPay || 0), 0), extra } });
     const L = CPA.launchable(s);
     if (L.length) CPA.pushCard(s, { type: 'launchOffer', kind: 'choice', title: 'Add new services?', data: { lines: ['Tick every service you want to start offering next month, then launch them together. Or wait until next year.'], options: L.map(x => ({ value: String(x.slot), label: x.name, sub: x.scope + ' · $' + Math.round(x.fee).toLocaleString('en-US') + '/yr' + (CPA.serviceGateText && CPA.serviceGateText(s, x) ? ' · ' + CPA.serviceGateText(s, x) : '') })), multi: { max: 99 }, buttons: [{ value: 'ok', label: 'Launch selected', primary: true }, { value: 'no', label: 'Not now' }] } });
   };
@@ -971,15 +975,15 @@ main:has(.stickybar){padding-bottom:230px}
     roles = roles || C.hireableRoles(s, 'any');
     const push = front ? C.pushCardFront : C.pushCard;
     if (!roles.length) { push(s, { type: 'info', kind: 'choice', title: title || 'Hire someone', data: { lines: ['There are no open spots right now. Associates fill team seats; new teams need a director (you lead 2 until revenue reaches $2M). Interns are hired January to April.'] } }); return; }
-    push(s, { type: 'hireRole', kind: 'choice', title: title || 'Hire someone', data: { lines: loadLines(s), options: roles.map(n => ({ value: n, label: n, sub: 'Base ' + fmt$(RI[n].base) + ' · ' + C.openSpots(s, n) + ' open' })), buttons: [{ value: 'cancel', label: 'Cancel' }] } });
+    push(s, { type: 'hireRole', kind: 'choice', title: title || 'Hire someone', data: { lines: loadLines(s), options: roles.map(n => ({ value: n, label: n, sub: (RI[n].lvl === 4 && C.partnersOn && C.partnersOn(s) ? 'Partner pay: ' + fmt$(s.settings.partnerMin) + ' a year or an equal share of profit' : 'Base ' + fmt$(RI[n].base)) + ' · ' + C.openSpots(s, n) + ' open' })), buttons: [{ value: 'cancel', label: 'Cancel' }] } });
   };
   function pushCandidates(s, roleName, left, hired) {
     const cs = C.candidates(s, roleName);
-    C.pushCardFront(s, { type: 'hireCand', kind: 'choice', title: 'Candidates · ' + roleName, data: { role: roleName, left, hired, cands: cs, lines: [left > 1 ? left + ' hires to go. Pick one.' : 'Pick one to hire. They start ' + mlab(s, startTurnForHire(s)) + '.'], options: cs.map((c, k) => ({ value: String(k), label: c.name + ' · would take ' + fmt$(c.salary), sub: 'Age ' + c.age + ' · ' + c.years + ' yrs · ' + c.degree + (c.school ? ', ' + c.school + (c.tier === 1 ? ' (top program)' : '') : '') + ' · ' + (c.certs.join(', ') || 'no certs') + ' · wants ' + fmt$(c.lo) + '–' + fmt$(c.hi) })), buttons: [{ value: 'stop', label: 'Stop hiring' }] } });
+    C.pushCardFront(s, { type: 'hireCand', kind: 'choice', title: 'Candidates · ' + roleName, data: { role: roleName, left, hired, cands: cs, lines: [left > 1 ? left + ' hires to go. Pick one.' : 'Pick one to hire. They start ' + mlab(s, startTurnForHire(s)) + '.'], options: cs.map((c, k) => ({ value: String(k), label: c.name + (RI[roleName].lvl === 4 && C.partnersOn && C.partnersOn(s) ? ' · joins on partner pay' : ' · would take ' + fmt$(c.salary)), sub: 'Age ' + c.age + ' · ' + c.years + ' yrs · ' + c.degree + (c.school ? ', ' + c.school + (c.tier === 1 ? ' (top program)' : '') : '') + ' · ' + (c.certs.join(', ') || 'no certs') + (RI[roleName].lvl === 4 && C.partnersOn && C.partnersOn(s) ? '' : ' · wants ' + fmt$(c.lo) + '–' + fmt$(c.hi)) })), buttons: [{ value: 'stop', label: 'Stop hiring' }] } });
   }
   function hiredSummary(s, ps) {
     if (!ps.length) return;
-    C.pushCardFront(s, { type: 'info', kind: 'choice', title: ps.length === 1 ? 'Hired' : 'Hired ' + ps.length, data: { lines: [ps.length === 1 ? ps[0].name + ' joins as ' + ps[0].role + ' on ' + fmt$(ps[0].salary) + ', starting ' + mlab(s, ps[0].startTurn) + (ps[0].team != null ? ' on team ' + ps[0].team : '') + '.' : 'Added payroll ' + fmt$(ps.reduce((a, p) => a + p.salary, 0)) + ' a year.', ...(ps.length > 1 ? ps.slice(0, 20).map(p => p.name + ' · ' + p.role) : [])] } });
+    C.pushCardFront(s, { type: 'info', kind: 'choice', title: ps.length === 1 ? 'Hired' : 'Hired ' + ps.length, data: { lines: [ps.length === 1 ? ps[0].name + ' joins as ' + ps[0].role + (RI[ps[0].role].lvl === 4 && C.partnersOn && C.partnersOn(s) ? ' on partner pay' : ' on ' + fmt$(ps[0].salary)) + ', starting ' + mlab(s, ps[0].startTurn) + (ps[0].team != null ? ' on team ' + ps[0].team : '') + '.' : 'Added payroll ' + fmt$(ps.reduce((a, p) => a + p.salary, 0)) + ' a year.', ...(ps.length > 1 ? ps.slice(0, 20).map(p => p.name + ' · ' + p.role) : [])] } });
   }
 
   /* ---------- Promotions ---------- */
@@ -1033,7 +1037,7 @@ main:has(.stickybar){padding-bottom:230px}
     const opts = cands.slice(0, 8).map(p => {
       const needCPA = C.promoNeeds(p, RI[nextName]);
       const after = Math.max(C.marketPay(s, nextName, p.years), r500(p.salary * (1 + s.settings.promoRaise)));
-      return { value: String(p.id), label: p.name + ' · rated ' + (p.rating || 3), sub: p.role + (p.team != null ? ' · team ' + p.team : '') + ' · ' + yearsAtFirm(s, p, t).toFixed(1) + ' yrs here · ' + (p.certs.join(', ') || 'no certs') + ' · ' + fmt$(p.salary) + ' → ' + fmt$(after) + (needCPA ? ' · needs a ' + (C.promoNeeds(p, RI[nextName]) || 'CPA') : ''), disabled: needCPA };
+      return { value: String(p.id), label: p.name + ' · rated ' + (p.rating || 3), sub: p.role + (p.team != null ? ' · team ' + p.team : '') + ' · ' + yearsAtFirm(s, p, t).toFixed(1) + ' yrs here · ' + (p.certs.join(', ') || 'no certs') + ' · ' + (RI[nextName] && RI[nextName].lvl === 4 && C.partnersOn && C.partnersOn(s) ? fmt$(p.salary) + ' → partner pay' : fmt$(p.salary) + ' → ' + fmt$(after)) + (needCPA ? ' · needs a ' + (C.promoNeeds(p, RI[nextName]) || 'CPA') : ''), disabled: needCPA };
     });
     C.pushCard(s, { type: 'promoPick', kind: 'choice', title: mlab(s, t) + ' promotions · ' + d + (office ? ' · ' + C.cityBase(office.city) : ''), data: { dept: d, fromLvl, nextName, seats, office: office ? office.id : null, lines: [seats + ' open ' + nextName + ' seat' + (seats > 1 ? 's' : '') + '. Pick up to ' + seats + ', and add outside hires for any seat you want filled from outside.', ...(cands.length > 8 ? ['…and ' + (cands.length - 8) + ' more (lower rated).'] : [])], options: opts, multi: { max: seats }, input: { label: 'Outside hires', min: 0, max: seats, value: 0 }, buttons: [{ value: 'ok', label: 'Promote', primary: true }, { value: 'skip', label: 'Leave seats open' }] } });
   }
@@ -1174,7 +1178,7 @@ main:has(.stickybar){padding-bottom:230px}
     C.activePeople(s, t).filter(p => p.startTurn < t && info(p).lvl !== 0 && info(p).lvl !== 9 && (p.hc || 1) === 1).forEach(p => { // v1 also rolls for people already leaving
       const i = info(p); let pr = st.turnover * share * (C.hrTurnoverMult ? C.hrTurnoverMult(s, t) : 1);
       if ((s.prev.workload || 0) > 1) pr *= st.tOverload;
-      if (p.salary < 0.95 * C.marketPay(s, p.role, p.years) * (C.payFactor ? C.payFactor(s, p) : 1)) pr *= st.tUnderpaid;
+      if (!(C.partnersOn && C.partnersOn(s) && i.lvl === 4) && p.salary < 0.95 * C.marketPay(s, p.role, p.years) * (C.payFactor ? C.payFactor(s, p) : 1)) pr *= st.tUnderpaid; // partners have their minimum instead
       if ((p.rating || 3) <= 2) pr *= st.tLowRated;
       if (i.lvl === 3 || i.lvl === 4) pr *= st.tLeaders;
       if (i.next && t - (p.inRoleSince || p.startTurn) >= 48) pr *= st.tStuck;
@@ -1258,7 +1262,7 @@ main:has(.stickybar){padding-bottom:230px}
         let ch = st['cert' + c] * (p.years > 8 ? 0.3 : p.years > 5 ? 0.6 : 1) * (r >= 4 ? 1.2 : r <= 2 ? 0.8 : 1) * (bw > 1 ? 0.85 : 1) * (c === 'CFP' && p.certs.includes('CPA') ? 0.5 : 1);
         if (R.next(s) < ch) { p.certs.push(c); certs.push(p.name + ' (' + c + ')'); }
       });
-      const old = p.salary; p.salary = r100(p.salary * (1 + st['raise' + r])); raiseCost += p.salary - old;
+      if (!(C.partnersOn && C.partnersOn(s) && i.lvl === 4)) { const old = p.salary; p.salary = r100(p.salary * (1 + st['raise' + r])); raiseCost += p.salary - old; } // partners share profit instead of raises
     });
     const retired = [];
     C.activePeople(s, t).filter(p => p.id !== 1 && info(p).lvl !== 9 && (p.endTurn == null || p.endTurn > t + 1)).forEach(p => { // v1: active now and next month
@@ -1404,6 +1408,7 @@ main:has(.stickybar){padding-bottom:230px}
     renderCard();
     bind();
     if (UI.afterRender) UI.afterRender();
+    if (UI.relabel) UI.relabel();
   }
 
   /* ---------- dashboard ---------- */
@@ -1419,7 +1424,7 @@ main:has(.stickybar){padding-bottom:230px}
     return `
     <section class="kpis">
       <div class="kpi lead"><span class="lbl">Cash on hand</span><b class="num big ${cash < 0 ? 'neg' : ''}">${money(cash)}</b><span class="hint">${cash < 0 ? 'Out of cash: you pay ' + money(C.overdraftInterest ? C.overdraftInterest(S) : 0) + ' a month in interest (' + pct(S.settings.overdraftRate || 0) + ' a year) until it\'s paid back.' : 'Starting cash ' + money(S.settings.startingCash)}</span></div>
-      <div class="kpi"><span class="lbl">Profit 12 mo</span><b class="num ${p12 < 0 ? 'neg' : ''}">${money(p12, true)}</b><span class="hint">Last mo ${last ? money(last.profit, true) : '—'}</span></div>
+      <div class="kpi"><span class="lbl">Profit 12 mo${C.partnersOn && C.partnersOn(S) ? ' · after partners' : ''}</span><b class="num ${p12 < 0 ? 'neg' : ''}">${money(p12, true)}</b><span class="hint">Last mo ${last ? money(last.profit, true) : '—'}</span></div>
       <div class="kpi"><span class="lbl">Revenue 12 mo</span><b class="num">${money(r12, true)}</b><span class="hint">YTD ${money(C.revYTD(S), true)}</span></div>
       <div class="kpi"><span class="lbl">IPA 500 rank</span><b class="num">${rank === '500+' ? '500+' : '#' + rank}</b><span class="hint">#500 earns ${money(min500, true)}</span></div>
     </section>
@@ -1428,7 +1433,7 @@ main:has(.stickybar){padding-bottom:230px}
         ${gauge(cap, 'Capacity used', 'Committed yearly hours vs. what your people can do. At 100% you win no new clients.')}
         ${gauge(wl, 'Workload this month', 'Over 100% raises next month\'s client losses.')}
       </div>
-      <div class="facts"><span><b class="num">${C.totalClients(S)}</b> clients</span><span><b class="num">${C.activePeople(S, t).length}</b> on staff</span><span>${S.offices.length ? '<b class="num">' + S.offices.length + '</b> office' + (S.offices.length > 1 ? 's' : '') : 'Remote'}</span></div>
+      <div class="facts"><span><b class="num">${C.totalClients(S)}</b> clients</span><span><b class="num">${C.activePeople(S, t).length}</b> on staff</span>${C.partnersOn && C.partnersOn(S) ? (() => { const L12 = S.history.log.slice(-12), pp = L12.reduce((a, r) => a + (r.partnerPay || 0), 0), yp = L12.reduce((a, r) => a + (r.youPay || 0), 0), n = C.partnersAt(S, t).length; return `<span><b class="num">${n}</b> partner${n === 1 ? '' : 's'} · paid <b class="num">${money(pp, true)}</b> in 12 mo (you <b class="num">${money(yp, true)}</b>)</span>`; })() : ''}<span>${S.offices.length ? '<b class="num">' + S.offices.length + '</b> office' + (S.offices.length > 1 ? 's' : '') : 'Remote'}</span></div>
     </section>
     <section class="panel decide">
       <h2>Next month · ${C.monthLabel(S, t)}</h2>
@@ -1473,7 +1478,7 @@ main:has(.stickybar){padding-bottom:230px}
     const t = C.nextTurn(S), r12 = C.revT12(S), price = S.decisions.price;
     const launchable = C.launchable(S);
     const lvLoNow = C.levelLoads && +S.settings.levelsOn ? C.levelLoads(S) : null;
-    const mixText = (x) => { if (!C.levelMix || !+S.settings.levelsOn) return ''; const m = C.levelMix(x); return m.map((f, k) => f > 0 ? Math.round(f * 100) + '% ' + ['assoc.', 'senior', 'mgr', 'dir.'][k] : '').filter(Boolean).join(' · '); };
+    const mixText = (x) => { if (!C.levelMix || !+S.settings.levelsOn) return ''; const m = C.levelMix(x); return m.map((f, k) => f > 0 ? Math.round(f * 100) + '% ' + ['assoc.', 'senior', 'mgr', C.partnersOn && C.partnersOn(S) ? 'partner' : 'dir.'][k] : '').filter(Boolean).join(' · '); };
     const rows = S.services.map((x, i) => {
       const on = x.offered, rev = C.svcRevT12(S, i), held = C.serviceLevelNote ? C.serviceLevelNote(S, x, lvLoNow) : '';
       let status;
@@ -1542,7 +1547,8 @@ main:has(.stickybar){padding-bottom:230px}
     return `<div class="dice"><div><span class="lbl">Event · roll ${d.eventRoll}</span><b>${esc(d.event)}</b><span>${effects || 'No effect'}</span></div><div><span class="lbl">Growth · roll ${d.growthRoll}</span><b>${esc(d.growthLabel)}</b><span>Leads ×${d.leadMult}</span></div></div>
       <div class="facts"><span>New <b class="num pos">+${d.newClients}</b></span><span>Lost <b class="num neg">${d.lostClients ? "−" + d.lostClients : 0}</b></span><span>Total <b class="num">${d.totalClients}</b></span></div>
       ${d.changes.length ? `<ul class="chg">${d.changes.map(x => `<li><span>${esc(x.name)}</span><b class="num">${x.new ? '+' + x.new : ''}${x.new && x.lost ? ' / ' : ''}${x.lost ? '−' + x.lost : ''}</b><em class="num">${x.end}</em></li>`).join('')}</ul>` : ''}
-      <div class="kv"><span>Revenue</span><b class="num">${money(d.revenue)}</b></div><div class="kv"><span>Profit</span><b class="num ${d.profit < 0 ? 'neg' : ''}">${money(d.profit)}</b></div>
+      <div class="kv"><span>Revenue</span><b class="num">${money(d.revenue)}</b></div>${d.partner ? `<div class="kv"><span>Profit before partner pay</span><b class="num ${d.partner.before < 0 ? 'neg' : ''}">${money(d.partner.before)}</b></div><div class="kv"><span>Partner pay · ${d.partner.n} partner${d.partner.n === 1 ? '' : 's'}</span><b class="num">${money(d.partner.total)}</b></div>` : ''}<div class="kv"><span>${d.partner ? 'Profit after partner pay' : 'Profit'}</span><b class="num ${d.profit < 0 ? 'neg' : ''}">${money(d.profit)}</b></div>
+      ${d.partner ? `<p class="note">${UI.partnerNote ? esc(UI.partnerNote(d.partner)) : ''}</p>` : ''}
       <div class="kv"><span>Last 12 months</span><b class="num">${money(d.revT12)} rev · ${money(d.profitT12)} profit</b></div>
       ${false && d.january ? `<p class="note">New year: official rank ${esc(d.officialRank)}. The yearly IPA 500 update arrives in phase 4.</p>` : ''}
       <div class="kv"><span>Cash</span><b class="num ${d.cash < 0 ? 'neg' : ''}">${money(d.cash)}</b></div>${d.cash < 0 ? '<p class="warnline">You are out of cash.</p>' : ''}
@@ -1558,6 +1564,7 @@ main:has(.stickybar){padding-bottom:230px}
   UI.cardViews.yearEnd = (c) => {
     const d = c.data;
     return `<div class="kv"><span>Revenue ${d.y}</span><b class="num">${money(d.revenue)}</b></div><div class="kv"><span>Profit ${d.y}</span><b class="num">${money(d.profit)}</b></div>
+      ${d.partnerPay ? `<div class="kv"><span>Partner pay ${d.y} (you)</span><b class="num">${money(d.partnerPay)} (${money(d.youPay)})</b></div>` : ''}
       <div class="kv"><span>Clients won / lost</span><b class="num">+${d.newClients} / ${d.lostClients ? "−" + d.lostClients : 0}</b></div>
       <div class="kv"><span>Busy-season workload (Jan–Apr)</span><b class="num">${d.busyWorkload ? pct(d.busyWorkload) : '—'}</b></div>
       <p class="note">You turn ${d.age}.</p>${(d.extra || []).map(x => `<p class="note">${esc(x)}</p>`).join('')}`;
@@ -2339,7 +2346,9 @@ main:has(.stickybar){padding-bottom:230px}
     const S = UI.state(), t = C.nextTurn(S), busy = C.busy(S);
     const act = C.activePeople(S, t), ros = C.roster(S, t);
     const future = ros.filter(p => p.startTurn > t);
-    const payroll = act.reduce((a, p) => a + (p.salary || 0), 0);
+    const pOn = C.partnersOn && C.partnersOn(S), isP = (p) => pOn && C.isPartner(S, p);
+    const payroll = act.filter(p => !isP(p)).reduce((a, p) => a + (p.salary || 0), 0);
+    const partnersNow = act.filter(isP), pay12 = partnersNow.reduce((a, p) => a + C.partnerPay12(p), 0);
     const plan = C.teamPlan(S, t);
     const lt = C.loadTable(S, t);
     const depts = ['All', 'CAS', 'Tax', 'Audit', 'Valuation', 'Forensic', 'Admin', 'HR'].filter(d => d === 'All' || ros.some(p => (C.ROLE_INFO[p.role] || {}).dept === d));
@@ -2349,14 +2358,15 @@ main:has(.stickybar){padding-bottom:230px}
       const i = C.ROLE_INFO[p.role], fut = p.startTurn > t, leaving = p.endTurn != null;
       const tag = fut ? `<span class="pill soon">Starts ${C.monthLabel(S, p.startTurn)}</span>` : leaving ? `<span class="pill lock">Leaves ${C.monthLabel(S, p.endTurn)}</span>` : (p.rating && i.lvl !== 9 ? `<span class="pill on">Rated ${p.rating}</span>` : '');
       const open = openId === p.id;
-      return `<li class="pp${open ? ' open' : ''}"><button class="pp-h" data-pid="${p.id}" aria-expanded="${open}"><span class="pp-n"><b>${esc(p.name)}</b><span>${esc(p.role)}${p.team != null ? ' · team ' + p.team : ''}${(p.certs || []).length ? ' · ' + p.certs.join(', ') : ''}</span></span>${tag}</button>
-        ${open ? `<div class="pp-d"><div class="kv"><span>Pay</span><b class="num">${$$(p.salary)}${i.lvl !== 9 ? ' · market ' + $$(C.marketPay(S, p.role, p.years || 0)) : ''}</b></div><div class="kv"><span>Age · experience</span><b class="num">${p.age} · ${p.years || 0} yrs</b></div><div class="kv"><span>Degree</span><b>${esc(p.degree)}${p.school ? ', ' + esc(p.school) : ''}${C.schoolTier && C.schoolTier(p.school) === 1 ? ' · top program' : ''}</b></div>${p.role === 'Campus Recruiter' ? `<div class="kv"><span>Regions</span><b>${esc((p.regions || []).join(', ') || 'none yet')}</b></div><div class="chips"><button class="chip act" data-regions="${p.id}"${busy ? ' disabled' : ''}>Change regions</button></div>` : ''}<div class="kv"><span>Ratings</span><b>${esc((p.ratings || []).join(', ') || '—')}</b></div><div class="kv"><span>In role since</span><b>${C.monthLabel(S, p.inRoleSince || p.startTurn)}</b></div><p class="muted small">${esc(p.source)}</p></div>` : ''}</li>`;
+      return `<li class="pp${open ? ' open' : ''}"><button class="pp-h" data-pid="${p.id}" aria-expanded="${open}"><span class="pp-n"><b>${esc(p.name)}</b><span>${esc(p.role)}${isP(p) ? ' · ' + $$(C.partnerPay12(p)) + ' last 12 mo' : ''}${p.team != null ? ' · team ' + p.team : ''}${(p.certs || []).length ? ' · ' + p.certs.join(', ') : ''}</span></span>${tag}</button>
+        ${open ? `<div class="pp-d">${isP(p) ? `<div class="kv"><span>Partner pay, last ${Math.min(12, (p.pp || []).length) || 0} month${(p.pp || []).length === 1 ? '' : 's'}</span><b class="num">${$$(C.partnerPay12(p))}</b></div><p class="muted small">${p.id === 1 ? (C.revT12(S) >= S.settings.youMinFrom ? 'You get ' + $$(S.settings.partnerMin) + ' a year or your share of profit, whichever is higher.' : 'You get your share of profit. Your ' + $$(S.settings.partnerMin) + ' minimum starts once yearly revenue passes ' + $$(S.settings.youMinFrom) + '.') : $$(S.settings.partnerMin) + ' a year or an equal share of profit, whichever is higher.'}</p>` : `<div class="kv"><span>Pay</span><b class="num">${$$(p.salary)}${i.lvl !== 9 ? ' · market ' + $$(C.marketPay(S, p.role, p.years || 0)) : ''}</b></div>`}<div class="kv"><span>Age · experience</span><b class="num">${p.age} · ${p.years || 0} yrs</b></div><div class="kv"><span>Degree</span><b>${esc(p.degree)}${p.school ? ', ' + esc(p.school) : ''}${C.schoolTier && C.schoolTier(p.school) === 1 ? ' · top program' : ''}</b></div>${p.role === 'Campus Recruiter' ? `<div class="kv"><span>Regions</span><b>${esc((p.regions || []).join(', ') || 'none yet')}</b></div><div class="chips"><button class="chip act" data-regions="${p.id}"${busy ? ' disabled' : ''}>Change regions</button></div>` : ''}<div class="kv"><span>Ratings</span><b>${esc((p.ratings || []).join(', ') || '—')}</b></div><div class="kv"><span>In role since</span><b>${C.monthLabel(S, p.inRoleSince || p.startTurn)}</b></div><p class="muted small">${esc(p.source)}</p></div>` : ''}</li>`;
     }).join('');
     const niches = S.niches || {};
     const teams = plan.teams.map(k => `<li class="tm"><b>Team ${k.id}${niches[k.id] ? ' · ' + esc(niches[k.id]) : ''}</b><span>${k.dept || 'No department yet'}${C.NICHES && C.NICHES[k.dept] && (niches[k.id] || C.canSpecialize(S, k.dept, t) > 0) ? ` <button class="chip act" data-niche="${k.id}" data-nd="${k.dept}"${busy ? ' disabled' : ''}>${niches[k.id] ? 'Change' : 'Specialize'}</button>` : ''}</span><span class="num">M ${k.mgr}/1 · S ${k.sr}/3 · A ${k.as}/${3 * Math.max(1, k.sr)} · I ${k.in}/2</span></li>`).join('');
     const dirs = C.DEPTS.filter(d => plan.byD[d].dirs || plan.byD[d].teams || C.roleUseful(S, C.roleFor(d, 1))).map(d => `${d} ${plan.byD[d].dirs}`).join(' · ');
     return `<section class="panel"><h2>People</h2>
-      <div class="facts"><span><b class="num">${act.length}</b> on staff</span><span><b class="num">${future.length}</b> starting soon</span><span>Payroll <b class="num">${$$(payroll)}</b>/yr</span></div>
+      <div class="facts"><span><b class="num">${act.length}</b> on staff</span><span><b class="num">${future.length}</b> starting soon</span><span>${pOn ? 'Staff payroll' : 'Payroll'} <b class="num">${$$(payroll)}</b>/yr</span>${pOn ? `<span><b class="num">${partnersNow.length}</b> partner${partnersNow.length === 1 ? '' : 's'} · paid <b class="num">${$$(pay12)}</b> in 12 mo</span>` : ''}</div>
+      ${pOn ? `<p class="muted small">Partners are paid ${Math.round(S.settings.partnerShare * 100)}% of the firm's profit before partner pay, split evenly, with a minimum of ${$$(S.settings.partnerMin)} a year each (yours starts once yearly revenue passes ${$$(S.settings.youMinFrom)}). Losing months pay no share, and the loss is made up before partners share profit again. Each partner also brings about ${S.settings.partnerLeads} leads a month to their department.</p>` : ''}
       <div class="play"><button class="btn primary" data-pact="hire"${busy ? ' disabled' : ''}>Hire someone</button><button class="btn" data-pact="promote"${busy ? ' disabled' : ''}>Promote someone</button></div>
       ${+S.settings.directorsHandle ? '<p class="note">Your directors handle associates, seniors and interns.</p>' : ''}</section>
     <section class="panel"><h2>Hiring desk</h2>
@@ -3175,6 +3185,86 @@ main:has(.stickybar){padding-bottom:230px}
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
+<script>/* ===== CPA Firm Simulator v2 — PARTNERS (Nov 3 update) =====
+   Directors are now partners. Each month the firm keeps 75% of its profit before partner pay and pays
+   25% to its partners, split evenly; a month that loses money pays no share, and the loss is made up from
+   the next good months first. Every partner gets at least $150K a year (paid monthly); yours starts once
+   yearly revenue passes $1M. Each partner other than you brings about 2 leads a month to their
+   department. Partners get no raises and are never "underpaid" for turnover. Decided with Jaye.
+   Internal role names keep "Director"; the screens say "Partner" (see UI.relabel). */
+(function (G) {
+  const C = G.CPA, RI = C.ROLE_INFO;
+  C.SETTINGS.push(
+    ['partnersOn', 'Directors are partners paid from profit (1/0)', 1, 'v2', 'Partners', 'n'],
+    ['partnerShare', 'Share of profit (before partner pay) paid to partners', 0.25, 'v2', 'Partners', 'p'],
+    ['partnerMin', 'Partner minimum pay a year', 150000, 'v2', 'Partners', '$'],
+    ['youMinFrom', 'Your partner minimum starts at yearly revenue', 1000000, 'v2', 'Partners', '$'],
+    ['partnerLeads', 'Leads a month each partner brings to their department', 2, 'v2', 'Partners', 'n'],
+  );
+  C.partnersOn = (s) => +s.settings.partnersOn === 1;
+  C.partnerPaid = (s, role) => C.partnersOn(s) && !!role && role[1] === 4; // role: CPA.ROLES row
+  C.isPartner = (s, p) => p.id === 1 || (RI[p.role] || {}).lvl === 4;
+  C.partnersAt = (s, t) => C.activePeople(s, t).filter(p => C.isPartner(s, p));
+  C.partnerPay12 = (p) => (p.pp || []).reduce((a, v) => a + v, 0);
+  const pstate = (s) => (s.partner = s.partner || { carry: 0, last: null });
+
+  // Called once a month from the month math with that month's profit before partner pay
+  C.partnerPayMonth = function (s, t, before) {
+    if (!C.partnersOn(s)) return 0;
+    const st = s.settings, ps = pstate(s), list = C.partnersAt(s, t);
+    const base = before + (ps.carry || 0);
+    let pool = 0;
+    if (base > 0) { pool = base * st.partnerShare; ps.carry = 0; } else ps.carry = base;
+    const n = Math.max(1, list.length), share = pool / n, floor = st.partnerMin / 12, youMin = C.revT12(s) >= st.youMinFrom;
+    let total = 0, you = 0, topped = 0;
+    list.forEach(p => {
+      const minOk = p.id !== 1 || youMin, v = minOk ? Math.max(floor, share) : share;
+      if (minOk && floor > share) topped++;
+      p.pp = (p.pp || []).concat(Math.round(v)).slice(-12);
+      total += v; if (p.id === 1) you = v;
+    });
+    ps.last = { t, before, pool, n: list.length, share, floor, you, total, carry: ps.carry, topped, youMin };
+    return total;
+  };
+  // Extra leads: each partner (not you) brings partnerLeads a month, spread over their department's services by marketing weight
+  C.extraLeads = function (s, t) {
+    if (!C.partnersOn(s)) return {};
+    const out = {}, by = {};
+    C.activePeople(s, t).forEach(p => { if (p.id === 1) return; const i = RI[p.role] || {}; if (i.lvl === 4) by[i.dept] = (by[i.dept] || 0) + 1; });
+    Object.keys(by).forEach(d => {
+      const svcs = s.services.filter(x => x.group === d && C.isOffered(x, t)), W = svcs.reduce((a, x) => a + x.weight, 0);
+      if (W > 0) svcs.forEach(x => { out[x.slot] = (out[x.slot] || 0) + by[d] * s.settings.partnerLeads * x.weight / W; });
+    });
+    return out;
+  };
+  C.partnerLeadsByDept = function (s, t) {
+    const by = {}; C.activePeople(s, t).forEach(p => { if (p.id === 1) return; const i = RI[p.role] || {}; if (i.lvl === 4) by[i.dept] = (by[i.dept] || 0) + s.settings.partnerLeads; }); return by;
+  };
+  C.register({ id: 'partners', migrate(s) { pstate(s); } });
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* ===== Partners on the screens: "Director" reads "Partner", and the month card's partner note ===== */
+(function () {
+  const C = window.CPA, UI = window.CPA_UI;
+  const $$ = (v) => (v < 0 ? '−$' : '$') + Math.abs(Math.round(v || 0)).toLocaleString('en-US');
+  const relabelText = (v) => v.replace(/Owner \/ CPA \(you\)/g, 'Managing Partner (you)').replace(/\bDIRECTORS\b/g, 'PARTNERS').replace(/\bDIRECTOR\b/g, 'PARTNER')
+    .replace(/\bDirectors\b/g, 'Partners').replace(/\bDirector\b/g, 'Partner').replace(/\bdirectors\b/g, 'partners').replace(/\bdirector\b/g, 'partner');
+  // Text only: option values and data attributes keep the internal role names
+  UI.relabel = function () {
+    const S = UI.state(); if (!S || !C.partnersOn(S)) return;
+    ['hdr', 'app', 'sheet', 'tut'].forEach(id => {
+      const el = document.getElementById(id); if (!el) return;
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+      while ((n = w.nextNode())) { if (/irector|IRECTOR|Owner \/ CPA/.test(n.nodeValue)) n.nodeValue = relabelText(n.nodeValue); }
+    });
+  };
+  UI.partnerNote = function (p) {
+    const pct = Math.round((UI.state().settings.partnerShare || 0.25) * 100);
+    if (p.pool <= 0) return 'No profit to share this month' + (p.carry < 0 ? ': ' + $$(-p.carry) + ' of losses must be made up before partners share profit again' : '') + '.' + (p.topped ? ' Partners still get their ' + $$(p.floor * 12) + '-a-year minimum.' : '');
+    return pct + '% of profit before partner pay is ' + $$(p.pool) + ', or ' + $$(p.share) + ' each.' + (p.topped ? ' ' + p.topped + ' partner' + (p.topped === 1 ? ' was' : 's were') + ' topped up to the ' + $$(p.floor * 12) + '-a-year minimum.' : '') + ' You got ' + $$(p.you) + '.';
+  };
+})();
+</script>
 <script>/* ===== Technology and CPE panel (phase 9) — on the Growth tab ===== */
 (function () {
   const C = window.CPA, UI = window.CPA_UI;
@@ -3284,7 +3374,7 @@ main:has(.stickybar){padding-bottom:230px}
     { tab: 'home', at: '[data-act=month]', wait: 'month', title: 'Play your first month', text: 'Tap Play next month. Two dice set the month: a growth roll for leads and an event roll. A pop-up sums up the month; tap Continue to close it. Play year runs through December and stops whenever there is a decision for you.' },
     { tab: 'clients', at: '.svcs', title: 'Clients and services', text: 'Every service shows its clients, fee and share of revenue. Services marked Select to launch can be added: tick as many as you like, then launch them together from the bar at the bottom. Locked ones come with a firm you buy or need something first.' },
     { tab: 'people', at: '[data-pact=hire]', title: 'Hiring', text: 'Hire someone opens the hiring flow: pick a role, then a candidate (age, experience, degree, school, certifications and pay). The Hiring desk below shows which groups need help (80% load or more means hire), and which staff level: CFO work needs managers and directors, bookkeeping mostly associates. You will also get pop-ups in August and before busy season.' },
-    { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead two teams yourself; after that each team needs a director. Promotions happen May to July, or any time with Promote someone.' },
+    { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead two teams yourself; after that every two teams need a partner. Partners share 25% of the profit (at least $150K a year each), and each brings in new leads for their department. Promotions happen May to July, or any time with Promote someone.' },
     { tab: 'more', at: '[data-oact=open]', title: 'Offices', text: 'You start remote. Open an office when your revenue supports it or once you hire admin staff: pick a city, a size in desks, and rent or buy. When an office runs out of desks you choose a bigger space, buying a building, or another office.' },
     { tab: 'more', at: '#techpanel', title: 'Technology and CPE', text: 'Better software lets everyone handle more clients, for a monthly cost per person and a short learning curve after you switch. Below it, CPE: licensed staff need yearly training hours. Skipping saves time and money but can cost them their licenses.' },
     { tab: 'more', at: '[data-acqreg]', title: 'Buying firms', text: 'Firms come up for sale through the year as pop-ups. Green means the payment fits your profit, yellow is a stretch, red you can\'t afford yet. Buy, Pass, or Hold one for up to 12 months. Pick the regions you\'re willing to buy in here.' },
