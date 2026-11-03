@@ -226,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.11.0'; // staff levels, integration pause, smaller saves
+  CPA.VERSION = '2.11.1'; // staff levels, integration pause, smaller saves; CAS Tiers 3–6 take 50% more hours
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -276,10 +276,10 @@ main:has(.stickybar){padding-bottom:230px}
     [2, 'Personal Tax (Form 1040)', 'Personal tax', 'Seasonal', 2, 0.008, 3, 5, 0.20, 'Tax', 480, 8, 'start', M([.05, .20, .25, .25, .02, .02, .02, .02, .07, .08, .01, .01]), 'Individual federal + state return'],
     [3, 'Business Tax (1120 / 1120-S / 1065)', 'Business tax', 'Seasonal', 10, 0.008, 0.8, 2.5, 0.25, 'Tax', 1200, 2, 'start', M([.05, .15, .30, .10, .02, .02, .02, .02, .20, .05, .04, .03]), 'Corporate, S-corp or partnership return'],
     [4, 'CAS Tier 2 – Bookkeeping + Payroll', 'CAS T2', 'Recurring', 84, 0.013, 0.2, 1, 0.12, 'CAS', 7920, 0, 'start', null, 'Tier 1 + payroll runs, filings, W-2s (about 5 employees)'],
-    [5, 'CAS Tier 3 – Outsourced Accounting Dept.', 'CAS T3', 'Recurring', 360, 0.012, 0.08, 0.6, 0.05, 'CAS', 39600, 0, 'launch', null, 'Tier 2 + AP/AR, monthly close, reporting, sales tax, 1099s'],
-    [6, 'CAS Tier 4 – Controller + Light CFO', 'CAS T4', 'Recurring', 480, 0.015, 0.04, 0.4, 0, 'CAS', 61200, 0, 'launch', null, 'Tier 3 + budgeting, cash-flow forecasting, quarterly strategy'],
-    [7, 'CAS Tier 5 – Fractional CFO (Growth)', 'CAS T5', 'Recurring', 720, 0.025, 0.02, 0.2, 0, 'CAS', 147600, 0, 'launch', null, 'Tier 3 + 20–40 hrs/mo CFO; client $2M–$10M'],
-    [8, 'CAS Tier 6 – Fractional CFO (Scale)', 'CAS T6', 'Recurring', 900, 0.025, 0.01, 0.1, 0, 'CAS', 219600, 0, 'launch', null, 'Tier 3 + 40+ hrs/mo CFO; client $10M+, multi-entity'],
+    [5, 'CAS Tier 3 – Outsourced Accounting Dept.', 'CAS T3', 'Recurring', 540, 0.012, 0.08, 0.6, 0.05, 'CAS', 39600, 0, 'launch', null, 'Tier 2 + AP/AR, monthly close, reporting, sales tax, 1099s'],
+    [6, 'CAS Tier 4 – Controller + Light CFO', 'CAS T4', 'Recurring', 720, 0.015, 0.04, 0.4, 0, 'CAS', 61200, 0, 'launch', null, 'Tier 3 + budgeting, cash-flow forecasting, quarterly strategy'],
+    [7, 'CAS Tier 5 – Fractional CFO (Growth)', 'CAS T5', 'Recurring', 1080, 0.025, 0.02, 0.2, 0, 'CAS', 147600, 0, 'launch', null, 'Tier 3 + 20–40 hrs/mo CFO; client $2M–$10M'],
+    [8, 'CAS Tier 6 – Fractional CFO (Scale)', 'CAS T6', 'Recurring', 1350, 0.025, 0.01, 0.1, 0, 'CAS', 219600, 0, 'launch', null, 'Tier 3 + 40+ hrs/mo CFO; client $10M+, multi-entity'],
     [9, 'Estate & Trust Tax (Form 1041)', 'Estate & trust', 'Seasonal', 5, 0.010, 0.3, 0.6, 0.05, 'Tax', 720, 0, 'launch', M([.03, .10, .25, .30, .02, .02, .02, .02, .18, .04, .01, .01]), 'Trust or estate return'],
     [10, 'Audit & Assurance', 'Audit', 'Seasonal', 120, 0.008, 0.15, 1, 0.06, 'Audit', 13200, 0, 'acq', M([.20, .25, .25, .15, .05, .05, 0, 0, 0, 0, 0, .05]), 'Financial statement audit, client under $5M'],
     [11, 'Business Valuation', 'Valuation', 'Project', 30, 0, 0.15, 1, 0, 'Advisory', 6000, 0, 'acq', null, 'One small-business valuation report'],
@@ -3160,7 +3160,12 @@ main:has(.stickybar){padding-bottom:230px}
 
   C.register({
     id: 'levels',
-    migrate(s) { C.trimMergers(s); },
+    migrate(s) {
+      C.trimMergers(s);
+      // Nov 3: CAS Tiers 3-6 take 50% more hours per client (v1: 360 / 480 / 720 / 900)
+      const OLD = { 5: [360, 540], 6: [480, 720], 7: [720, 1080], 8: [900, 1350] };
+      s.services.forEach(x => { const o = OLD[x.slot]; if (o && x.hpc === o[0]) x.hpc = o[1]; });
+    },
     stages: [
       { id: 'trimMergers', after: 'pe2027', run(s, cur) { if (C.monthOf(s, cur.t).m === (s.settings.marketMonth || 8)) C.trimMergers(s, C.monthOf(s, cur.t).y); } },
     ],
