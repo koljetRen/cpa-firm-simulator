@@ -2,13 +2,20 @@
 
 A browser game where you build an accounting firm from a one-person practice toward the IPA 500: win clients, price services, hire staff, open offices, and acquire other firms month by month.
 
-Version 2.12.1: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, staff levels, the integration pause, smaller saves and partners.
+Version 2.13.0: version 2 (phases 1–10 of the build plan) and every update since, through firm types, first teams and cross-department help.
 
 ## Play
 
 Open `index.html` in any modern browser. There's no build step and no server.
 
 To host it online, enable **GitHub Pages** (Settings → Pages → Deploy from a branch → `main` / root). The game will be at `https://<username>.github.io/cpa-firm-simulator/`.
+
+## What's new in 2.13.0
+
+- **Firms for sale have a focus.** Each firm is a tax practice, bookkeeping practice, full-service firm, audit & assurance firm, or outsourced accounting & CFO firm, and its client mix depends on its size. Small firms do more individual returns and CAS Tiers 1–2; big firms do more business returns, planning and Audit (no Audit under $500K). The pop-up shows the type and its main clients.
+- **Deals start new services.** Buying a firm starts any service it has that you don't offer yet (family office still needs $10M). Its clients move over the month after the deal, with its staff, so none are lost in between. A practice's price matches the value of its clients.
+- **Tax and Audit can grow.** Each department's first team runs under its manager, so Tax and Audit always have room to start, even when your two team seats hold CAS teams. Later teams still need you or a partner.
+- **Cross-department help.** Associates and seniors with free hours help other departments at 75% speed. They can't help with Audit work, which needs audit training. The Hiring desk counts that help, so a department only "needs help" when the whole firm is busy.
 
 ## What's new in 2.12.1
 

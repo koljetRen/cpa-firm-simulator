@@ -226,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.12.1'; // fewer firms for sale while small, fewer hours for everyday services, safer account saves
+  CPA.VERSION = '2.13.0'; // firms for sale have a focus, first team per department, cross-department help
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -795,19 +795,21 @@ main:has(.stickybar){padding-bottom:230px}
   C.youLead = (s) => (+s.settings.youLeadAlways || C.revT12(s) < s.settings.actAsDirectorUntil) ? 2 : 0;
   C.teamPlan = function (s, t = refTurn(s)) {
     const teams = C.teams(s, t), yl = C.youLead(s);
-    const byD = {}; DEPTS.forEach(d => byD[d] = { teams: teams.filter(k => k.dept === d).length, dirs: C.directors(s, t, d).length });
-    let overflow = 0; DEPTS.forEach(d => { const x = byD[d]; x.room = Math.max(0, 2 * x.dirs - x.teams); overflow += Math.max(0, x.teams - 2 * x.dirs); });
-    DEPTS.forEach(d => { byD[d].newRoom = byD[d].room + Math.max(0, yl - overflow); });
+    // Nov 3: each department you offer gets one team its manager runs without a partner (led = teams that need a leader)
+    const freeOn = +s.settings.freeFirstTeam === 1;
+    const byD = {}; DEPTS.forEach(d => { const n = teams.filter(k => k.dept === d).length, free = freeOn && C.roleUseful(s, roleFor(d, 1)) ? 1 : 0; byD[d] = { teams: n, free, led: Math.max(0, n - free), dirs: C.directors(s, t, d).length }; });
+    let overflow = 0; DEPTS.forEach(d => { const x = byD[d]; x.room = Math.max(0, 2 * x.dirs - x.led); overflow += Math.max(0, x.led - 2 * x.dirs); });
+    DEPTS.forEach(d => { byD[d].newRoom = byD[d].room + Math.max(0, yl - overflow) + (byD[d].teams < byD[d].free ? 1 : 0); });
     const dirsAll = C.directors(s, t).length;
     const unassigned = roster(s, t).filter(p => isTeamLevel(p) && p.team == null);
-    const plan = { teams, byD, youLead: yl, overflow, teamsUnled: Math.max(0, overflow - yl), maxTeams: Math.max(1, 2 * dirsAll + yl), unassigned };
+    const plan = { teams, byD, youLead: yl, overflow, teamsUnled: Math.max(0, overflow - yl), maxTeams: Math.max(1, 2 * dirsAll + yl + DEPTS.reduce((a, d) => a + byD[d].free, 0)), unassigned };
     // Director seats per department
     if (+s.settings.youLeadAlways) {
       // v2: you lead two teams of any department; a director is needed for a department's next team beyond that
       let left = 2; const alloc = {};
-      DEPTS.slice().sort((a, b) => byD[b].teams - byD[a].teams).forEach(d => { const k = Math.min(left, Math.max(0, byD[d].teams - 2 * byD[d].dirs)); alloc[d] = k; left -= k; });
-      DEPTS.forEach(d => { byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.ceil((byD[d].teams + 1 - alloc[d] - left) / 2) - byD[d].dirs) : 0; });
-    } else DEPTS.forEach(d => { byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.floor(byD[d].teams / 2) + 1 - byD[d].dirs) : 0; });
+      DEPTS.slice().sort((a, b) => byD[b].teams - byD[a].teams).forEach(d => { const k = Math.min(left, Math.max(0, byD[d].led - 2 * byD[d].dirs)); alloc[d] = k; left -= k; });
+      DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.ceil((byD[d].led + nxt - alloc[d] - left) / 2) - byD[d].dirs) : 0; });
+    } else DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.floor(byD[d].led / 2) + nxt - byD[d].dirs) : 0; });
     const waiting = DEPTS.filter(d => unassigned.some(p => info(p).dept === d) && byD[d].newRoom <= 0).length;
     plan.gap = Math.ceil(plan.teamsUnled / 2) + waiting;
     plan.needed = Math.max(Math.ceil(teams.length / 2), s.offices.length);
@@ -947,7 +949,7 @@ main:has(.stickybar){padding-bottom:230px}
     const adminLeft = s.prev.AB || 0;
     const cap = {}; groups.forEach(g => cap[g] = 0);
     let spread = 0, admH = 0, bkH = 0;
-    const offHeads = C.officeHeads(s, t);
+    const offHeads = C.officeHeads(s, t), helperCap = {};
     C.activePeople(s, t).forEach(p => {
       const i = info(p), r = C.ROLES[p.role] || ['', 0, 0, 1, 160, 'Client'], hc = p.hc || 1, hrs = (C.hoursOf ? C.hoursOf(s, p, r) : (p.hours || r[4])) * hc;
       if (r[5] === 'None') return;
@@ -955,6 +957,7 @@ main:has(.stickybar){padding-bottom:230px}
       const h = hrs * C.outputOf(s, p) * C.crowd(s, p, t, offHeads) * yrF;
       if (r[5] === 'Bookkeeper') { bkH += h; return; }
       const gs = i.lvl === 9 ? [] : i.groups.filter(g => og.has(g));
+      if (p.id !== 1 && i.lvl >= 0 && i.lvl <= 2 && r[5] === 'Client' && og.has(i.dept)) helperCap[i.dept] = (helperCap[i.dept] || 0) + h; // interns, associates, seniors
       if (!gs.length) spread += h; else gs.forEach(g => cap[g] += h / gs.length);
     });
     const bkWork = s.services.filter(x => x.slot === 1 || x.slot === 4).reduce((a, x) => a + x.clients * x.hpc, 0);
@@ -964,6 +967,23 @@ main:has(.stickybar){padding-bottom:230px}
       const d = dem[g] + (totDem > 0 ? adminLeft * dem[g] / totDem : 0);
       return { group: g, demand: d, capacity: cap[g], load: cap[g] > 0 ? d / cap[g] : (d > 0 ? 9.99 : 0) };
     });
+    // Nov 3: associates and seniors with free hours help other departments (not Audit) at crossSpeed, so a busy
+    // department only "needs help" when the firm can't bring it under 80% with that help
+    if (C.crossOn && C.crossOn(s)) {
+      const sp = Math.max(0.01, +s.settings.crossSpeed || 0.75), target = 0.8;
+      rows.filter(r => r.group !== 'Audit' && r.load > target).sort((a, b) => b.load - a.load).forEach(r => {
+        let need = r.demand / target - r.capacity;
+        rows.filter(d => d !== r && d.load < target && (helperCap[d.group] || 0) > 0).forEach(d => {
+          if (need <= 1e-6) return;
+          const spare = Math.min(helperCap[d.group], d.capacity - d.demand / target); if (spare <= 0) return;
+          const give = Math.min(need, spare * sp);
+          d.capacity -= give / sp; helperCap[d.group] -= give / sp; d.lent = (d.lent || 0) + give / sp;
+          r.capacity += give; r.help = (r.help || 0) + give; need -= give;
+          d.load = d.capacity > 0 ? d.demand / d.capacity : (d.demand > 0 ? 9.99 : 0);
+        });
+        r.load = r.capacity > 0 ? r.demand / r.capacity : (r.demand > 0 ? 9.99 : 0);
+      });
+    }
     const need = (s.prev.AA || 0) * s.settings.adminShare;
     rows.push({ group: 'Admin', demand: need, capacity: admH, load: admH > 0 ? need / admH : (need > 0 ? 9.99 : 0) });
     return rows;
@@ -2373,7 +2393,8 @@ main:has(.stickybar){padding-bottom:230px}
       <div class="play"><button class="btn primary" data-pact="hire"${busy ? ' disabled' : ''}>Hire someone</button><button class="btn" data-pact="promote"${busy ? ' disabled' : ''}>Promote someone</button></div>
       ${+S.settings.directorsHandle ? '<p class="note">Your directors handle associates, seniors and interns.</p>' : ''}</section>
     <section class="panel"><h2>Hiring desk</h2>
-      <div class="tablewrap"><table class="log"><thead><tr><th>Group</th><th>Work hrs/yr</th><th>Can do hrs/yr</th><th>Load</th></tr></thead><tbody>${lt.map(r => `<tr><th>${r.group}</th><td>${Math.round(r.demand).toLocaleString()}</td><td>${Math.round(r.capacity).toLocaleString()}</td><td class="${r.load >= 0.8 ? 'neg' : ''}">${r.load >= 9.99 ? 'no staff' : Math.round(r.load * 100) + '%'}${r.load >= 0.8 ? ' · needs help' : ''}</td></tr>`).join('')}</tbody></table></div>
+      <div class="tablewrap"><table class="log"><thead><tr><th>Group</th><th>Work hrs/yr</th><th>Can do hrs/yr</th><th>Load</th></tr></thead><tbody>${lt.map(r => `<tr><th>${r.group}</th><td>${Math.round(r.demand).toLocaleString()}</td><td>${Math.round(r.capacity).toLocaleString()}${r.help ? ' <span class="muted">(+' + Math.round(r.help).toLocaleString() + ' help)</span>' : ''}</td><td class="${r.load >= 0.8 ? 'neg' : ''}">${r.load >= 9.99 ? 'no staff' : Math.round(r.load * 100) + '%'}${r.load >= 0.8 ? ' · needs help' : ''}</td></tr>`).join('')}</tbody></table></div>
+      ${C.crossOn && C.crossOn(S) ? `<p class="muted small">Associates and seniors with free hours help other departments at ${Math.round((S.settings.crossSpeed || 0.75) * 100)}% speed (not Audit, which needs audit training). "+ help" shows the hours they can cover, so a department only needs help when the whole firm is busy.</p>` : ''}
       <p class="muted small">Work includes admin work your accountants pick up when admin staff can't cover it. Admin assistants can take up to ${Math.round(S.settings.adminShare * 100)}% of admin work; the Admin row shows how much of that they cover.</p>
       ${C.levelLoads && +S.settings.levelsOn ? (() => { const lo = C.levelLoads(S, t), ds = Object.keys(lo).filter(d => lo[d].demand.some(v => v > 0)); return ds.length ? `<h3>Work by staff level</h3><div class="tablewrap"><table class="log"><thead><tr><th>Group</th>${C.LEVELS.map(l => `<th>${l}</th>`).join('')}</tr></thead><tbody>${ds.map(d => `<tr><th>${esc(d)}</th>${lo[d].load.map((v, k) => lo[d].demand.slice(k).some(x => x > 0) ? `<td class="${v >= 0.8 ? 'neg' : ''}">${v >= 9.99 ? 'none free' : Math.round(v * 100) + '%'}</td>` : '<td class="muted">—</td>').join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Each column compares that level's work (and the levels above it) with the people at that level and above. Red is 80% or more. Over 100% (or "none free") means services needing that level stop winning clients and lose more of them: hire or promote at that level. Bookkeepers and interns count as associates; you count as a director anywhere.</p>` : ''; })() : ''}
       <p class="muted small">Open now: ${C.hireableRoles(S, 'any').map(r => esc(r) + ' (' + C.openSpots(S, r) + ')').join(', ') || 'none'}.</p></section>
@@ -2383,7 +2404,7 @@ main:has(.stickybar){padding-bottom:230px}
       <p class="small"><b>School pipelines (${(S.pipelines || []).length} of ${C.pipelineLimit(S)}):</b> ${esc((S.pipelines || []).join(', ') || 'none')}</p>
       ${C.recruiters(S).length ? `<div class="chips"><button class="chip act" data-pipe="1"${busy ? ' disabled' : ''}>Add a pipeline school</button></div>` : ''}</section>
     <section class="panel"><h2>Teams <span class="muted small">${plan.teams.length} of ${plan.maxTeams} allowed</span></h2>
-      <div class="facts"><span>Directors: ${dirs}${plan.youLead ? ' · you lead 2 teams' : ''}</span><span>Leadership gap <b class="num ${plan.gap ? 'neg' : ''}">${plan.gap}</b></span><span>Unassigned <b class="num">${plan.unassigned.length}</b></span></div>
+      <div class="facts"><span>Directors: ${dirs}${plan.youLead ? ' · you lead 2 teams' : ''}${+S.settings.freeFirstTeam ? ' · the first team in each department runs under its manager' : ''}</span><span>Leadership gap <b class="num ${plan.gap ? 'neg' : ''}">${plan.gap}</b></span><span>Unassigned <b class="num">${plan.unassigned.length}</b></span></div>
       ${teams ? `<ul class="tms">${teams}</ul>` : '<p class="muted">No teams yet. Your first hire starts team 1.</p>'}</section>
     <section class="panel"><h2>Staff</h2><div class="chips">${depts.map(d => `<button class="chip${filter === d ? ' on' : ''}" data-pf="${d}">${d}</button>`).join('')}</div><ul class="ppl2">${ppl}</ul></section>`;
   }
@@ -2595,9 +2616,10 @@ main:has(.stickybar){padding-bottom:230px}
   }
   function buildDeal(s, d) {
     const st = s.settings;
+    if (C.typedDeal && +st.firmTypes === 1) C.typedDeal(s, d, specialtyLines); // Nov 3: firms for sale have a focus
+    else { d.lines = d.lines || specialtyLines(s, d.revenue); d.mix = clientMix(s, d.revenue, d.lines); }
     d.staff = Math.round(d.revenue / st.revPerStaff); // v1 rule: practices under $100K come with no staff
-    d.lines = d.lines || specialtyLines(s, d.revenue);
-    d.mix = clientMix(s, d.revenue, d.lines);
+    if (+st.acqStaffByHours === 1 && d.mix) { const hrs = Object.entries(d.mix).reduce((a, [sl, c]) => { const x = s.services.find(v => v.slot === +sl); return a + c * x.hpc; }, 0); d.staff = Math.round(hrs / Math.max(1, +st.acqHoursPerStaff || 1900)); d.workHours = Math.round(hrs); }
     d.monthly = d.price / st.payTerm;
     d.directorsText = d.revenue < st.acqDirFrom ? 'None' : d.revenue < st.acqDirAlways ? '50% chance of 1' : 'About ' + Math.max(1, Math.round(d.revenue / st.revPerAcqDir));
     return d;
@@ -2645,7 +2667,9 @@ main:has(.stickybar){padding-bottom:230px}
     // service lines and clients
     const newLines = [];
     d.lines.forEach(sl => { const x = s.services.find(v => v.slot === sl); if (!x.offered) { x.offered = true; x.fromTurn = t1; x.clients = 0; newLines.push(x.name); } });
-    Object.entries(d.mix).forEach(([sl, c]) => { const x = s.services.find(v => v.slot === +sl); if (x.offered) x.clients += Math.round(c * st.retention); });
+    // clients move over next month, with the staff (v1 spec); a new service line starts then too
+    const arriving = {}; Object.entries(d.mix).forEach(([sl, c]) => { const x = s.services.find(v => v.slot === +sl); if (x.offered) arriving[sl] = Math.round(c * st.retention); });
+    (s.pendingDeals = s.pendingDeals || []).push({ t: t1, firm: d.name, mix: arriving });
     // offices: one per city; a city where you already have an office joins it
     const offIds = [];
     d.offices.cities.forEach(c => {
@@ -2657,7 +2681,7 @@ main:has(.stickybar){padding-bottom:230px}
     });
     // staff by department, split by the deal's client hours
     const hrs = { CAS: 0, Tax: 0, Audit: 0 };
-    Object.entries(d.mix).forEach(([sl, c]) => { const x = s.services.find(v => v.slot === +sl); const g = x.group === 'Advisory' ? 'Tax' : x.group; hrs[g] += c * x.hpc; });
+    Object.entries(d.mix).forEach(([sl, c]) => { const x = s.services.find(v => v.slot === +sl); const g = x.group === 'Advisory' ? 'Tax' : x.group; if (hrs[g] != null) hrs[g] += c * x.hpc; });
     const tot = hrs.CAS + hrs.Tax + hrs.Audit || 1, by = {};
     ['CAS', 'Tax', 'Audit'].forEach(g => by[g] = Math.floor(teamPeople * hrs[g] / tot));
     const big = ['CAS', 'Tax', 'Audit'].sort((a, b) => hrs[b] - hrs[a])[0];
@@ -2698,6 +2722,7 @@ main:has(.stickybar){padding-bottom:230px}
   function dealLines(s, d) {
     const col = C.dealColor(s, d), lines = d.lines.map(sl => s.services.find(x => x.slot === sl).short);
     return [
+      ...(d.kindName ? [{ k: 'Type', v: d.kindName }] : []),
       { k: 'Revenue', v: fmt$(d.revenue) }, { k: 'Price', v: fmt$(d.price) }, { k: 'Monthly payment (84 mo, no down)', v: fmt$(d.price / s.settings.payTerm) },
       { k: 'Check', v: col === 'green' ? 'Green: payment fits your profit' : col === 'yellow' ? 'Yellow: fits only with the firm\'s own profit' : 'Red: payment is more than you earn' },
       { k: 'Main office', v: d.main[0] }, { k: 'Offices it brings', v: d.offices.cities.length ? d.offices.cities.map(c => C.cityBase(c[0])).join(', ') : 'None (single location under ' + short$(s.settings.officeFrom) + ')' },
@@ -2745,7 +2770,7 @@ main:has(.stickybar){padding-bottom:230px}
         const down = a.v[0] === 'p' ? d.price * (+a.v.slice(1)) / 100 : Math.max(0, +a.n || 0);
         if (down > C.cash(s) + 0.5) { C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Not enough cash', data: { lines: ['That down payment is more than your cash (' + fmt$(C.cash(s)) + ').'] } }); return; }
         const r = C.completeDeal(s, d, down);
-        C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Done! ' + d.name + ' is yours', data: { lines: [{ k: 'People joining next month', v: String(r.people) }, { k: 'Directors · admin', v: r.dirs + ' · ' + r.admin }, { k: 'Offices added', v: String(r.offices) }, { k: 'New service lines', v: r.newLines.join(', ') || 'None' }, { k: 'Down payment', v: fmt$(r.down) }, { k: 'Monthly payment', v: r.monthly ? fmt$(r.monthly) + ' for ' + s.settings.payTerm + ' months' : 'None (paid in full)' }, Object.entries(r.roles).map(([k, v]) => v + ' ' + k).join(', '), ...(r.integration ? ['Integration: ' + d.name + ' is ' + Math.round(r.integration.ratio * 100) + '% of your revenue, so acquisitions pause for ' + r.integration.months + ' months, until ' + C.monthLabel(s, r.integration.until + 1) + '.'] : [])] } });
+        C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Done! ' + d.name + ' is yours', data: { lines: [{ k: 'People and clients joining next month', v: String(r.people) + ' people' }, { k: 'Directors · admin', v: r.dirs + ' · ' + r.admin }, { k: 'Offices added', v: String(r.offices) }, { k: 'New service lines', v: r.newLines.join(', ') || 'None' }, { k: 'Down payment', v: fmt$(r.down) }, { k: 'Monthly payment', v: r.monthly ? fmt$(r.monthly) + ' for ' + s.settings.payTerm + ' months' : 'None (paid in full)' }, Object.entries(r.roles).map(([k, v]) => v + ' ' + k).join(', '), ...(r.integration ? ['Integration: ' + d.name + ' is ' + Math.round(r.integration.ratio * 100) + '% of your revenue, so acquisitions pause for ' + r.integration.months + ' months, until ' + C.monthLabel(s, r.integration.until + 1) + '.'] : [])] } });
       },
       payDown(s, card, a) {
         if (!a || a.v === 'cancel') return; const pl = s.acqPlans[card.data.i]; if (!pl) return;
@@ -2874,9 +2899,11 @@ main:has(.stickybar){padding-bottom:230px}
   function offerCard(s, d, fromHold) {
     const col = C.dealColor(s, d), lines = d.lines.map(sl => s.services.find(x => x.slot === sl).short), st = s.settings;
     C.pushCard(s, { type: 'forSale', kind: 'choice', title: (fromHold ? 'On hold: ' : 'For sale: ') + d.name, data: { deal: d, lines: [
+      ...(d.kindName ? [{ k: 'Type', v: d.kindName }] : []),
       { k: 'Revenue', v: fmt$(d.revenue) }, { k: 'Asking price', v: fmt$(d.price) }, { k: 'Monthly payment (no down)', v: fmt$(d.price / st.payTerm) },
       { k: 'Fits your budget?', v: col === 'green' ? 'Green: can afford' : col === 'yellow' ? 'Yellow: a stretch' : 'Red: can\'t afford yet' },
       { k: 'Main office', v: d.main[0] + ' · ' + C.cityRegion(d.main[0], d.main[1]) }, { k: 'Staff', v: d.staff ? String(d.staff) : 'None (the owner sells the client list)' }, { k: 'Brings', v: lines.join(', ') || 'No new service lines' },
+      ...(C.dealClientsText ? [C.dealClientsText(s, d)] : []),
       d.top500 ? 'A top 500 firm (#' + d.top500 + ').' : 'Most offers are now or never. Hold keeps it on your watch list for up to ' + st.holdMonths + ' months while you negotiate or save up.',
       ...(C.integrating && C.integrating(s) ? ['You\'re integrating ' + C.integrating(s).firm + ' until ' + C.monthLabel(s, C.integrating(s).until + 1) + ', so you can\'t buy right now. Hold it to buy later.'] : [])],
       buttons: [...(C.integrating && C.integrating(s) ? [] : [{ value: 'buy', label: 'Buy…', primary: true }]), ...(fromHold ? [] : [{ value: 'hold', label: 'Hold', primary: !!(C.integrating && C.integrating(s)) }]), { value: 'pass', label: 'Pass' }] } });
@@ -3045,6 +3072,10 @@ main:has(.stickybar){padding-bottom:230px}
     19: [.30, .40, .25, .05], 20: [.20, .35, .35, .10], 21: [.30, .40, .25, .05],
   };
   C.levelMix = (x) => C.LEVEL_MIX[x.slot] || [.5, .3, .15, .05];
+  const crossOn = (s) => +s.settings.crossHelp === 1;
+  const crossSpeed = (s) => Math.max(0.01, +s.settings.crossSpeed || 0.75);
+  const isHelper = (b, d) => !b.you && !b.bk && !!b.d && b.d !== d && b.L <= 1 && b.h > 0; // interns, associates and seniors of another department
+  C.crossOn = crossOn;
   const levelsOn = (s) => +s.settings.levelsOn === 1;
   const lvlOf = (i) => Math.max(0, Math.min(3, (i.lvl || 1) - 1)); // intern 0 and associate 1 -> 0, senior -> 1, manager -> 2, director -> 3
 
@@ -3092,6 +3123,15 @@ main:has(.stickybar){padding-bottom:230px}
       const flex = list.filter(b => b.you || (b.extra && b.extra.includes(d))).sort((a, b) => (a.you ? 1 : 0) - (b.you ? 1 : 0));
       for (let k = 3; k >= 0; k--) take(need, k, flex);
     });
+    // Nov 3: associates and seniors with hours left help other departments' associate and senior work (not Audit), slower
+    if (crossOn(s)) {
+      const sp = crossSpeed(s);
+      Object.keys(dem).filter(d => d !== 'Audit').sort((a, b) => (unmet[b][0] + unmet[b][1]) - (unmet[a][0] + unmet[a][1])).forEach(d => {
+        const need = unmet[d]; if (need[0] + need[1] <= 1e-9) return;
+        const helpers = list.filter(b => isHelper(b, d));
+        [1, 0].forEach(k => { for (let L = k; L <= 1 && need[k] > 1e-9; L++) helpers.filter(b => b.L === L).forEach(b => { if (need[k] <= 1e-9) return; const x = Math.min(b.h * sp, need[k]); b.h -= x / sp; need[k] -= x; b.helped = (b.helped || 0) + x; }); });
+      });
+    }
     return { list, unmet };
   }
   // For each department: load at each level (that level's work and above vs. the people at that level and above)
@@ -3101,7 +3141,8 @@ main:has(.stickybar){padding-bottom:230px}
       const D = dem[d], U = al.unmet[d], L = [0, 0, 0, 0], room = [0, 0, 0, 0];
       for (let k = 0; k <= 3; k++) {
         let cd = 0, cu = 0; for (let l = k; l <= 3; l++) { cd += D[l]; cu += U[l]; }
-        const left = al.list.filter(b => b.L >= k && (b.d === d || b.you || (b.extra && b.extra.includes(d)))).reduce((a, b) => a + b.h, 0);
+        let left = al.list.filter(b => b.L >= k && (b.d === d || b.you || (b.extra && b.extra.includes(d)))).reduce((a, b) => a + b.h, 0);
+        if (crossOn(s) && d !== 'Audit' && k <= 1) left += crossSpeed(s) * al.list.filter(b => b.L >= k && isHelper(b, d)).reduce((a, b) => a + b.h, 0);
         room[k] = cu > 1e-6 ? 0 : left;
         const cap = cd - cu + left;
         L[k] = cap > 0 ? cd / cap : (cd > 0 ? 9.99 : 0);
@@ -3137,7 +3178,8 @@ main:has(.stickybar){padding-bottom:230px}
   // a department with no clients yet: room is everyone who could do that level of its work
   function levelRoomNoDemand(s, t, d, k, evCap) {
     const b = buckets(s, t, evCap);
-    return b.list.filter(x => x.L >= k && (x.d === d || x.you || (x.extra && x.extra.includes(d)))).reduce((a, x) => a + x.h, 0) + (d === 'CAS' && k === 0 ? b.bk : 0);
+    const help = crossOn(s) && d !== 'Audit' && k <= 1 ? crossSpeed(s) * b.list.filter(x => x.L >= k && isHelper(x, d)).reduce((a, x) => a + x.h, 0) : 0;
+    return b.list.filter(x => x.L >= k && (x.d === d || x.you || (x.extra && x.extra.includes(d)))).reduce((a, x) => a + x.h, 0) + (d === 'CAS' && k === 0 ? b.bk : 0) + help;
   }
   // Which level holds a service back right now (for the Clients tab)
   C.serviceLevelNote = function (s, x, lo) {
@@ -3193,6 +3235,87 @@ main:has(.stickybar){padding-bottom:230px}
     hooks: {
       summaryLines(s, row) { const g = s.integration; return g && g.until === row.t ? ['Integration of ' + g.firm + ' is complete. You can buy firms again.'] : []; },
     },
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* ===== CPA Firm Simulator v2 — FIRM TYPES, FIRST TEAMS, CROSS HELP (Nov 3 update) =====
+   1 Firms for sale have a focus: tax practice, bookkeeping, full-service, audit & assurance, or outsourced
+     accounting & CFO. Which focus, and each firm's client mix, depends on its size: small firms do more
+     individual returns and CAS Tiers 1-2, big firms more business returns, planning and Audit. A deal
+     starts any service you don't offer yet; its clients and staff move over the next month.
+   2 Each department's first team runs under its manager (no partner needed); later teams still need one.
+   3 Associates and seniors with free hours help other departments at 75% speed (not Audit).
+   Decided with Jaye. */
+(function (G) {
+  const C = G.CPA, R = C.rng, { clamp } = C.util;
+  C.SETTINGS.push(
+    ['firmTypes', 'Firms for sale have a focus: tax, bookkeeping, audit and so on (1/0)', 1, 'v2', 'Version 2 market', 'n'],
+    ['acqStaffByHours', 'Bought firms bring staff for their hours of client work, not their revenue (1/0)', 0, 'v2', 'Acquisitions', 'n'],
+    ['acqHoursPerStaff', 'Hours of client work per staff member a bought firm brings', 1900, 'v2', 'Acquisitions', 'n'],
+    ['freeFirstTeam', "Each department's first team runs under its manager, no partner needed (1/0)", 1, 'v2', 'Version 2 people', 'n'],
+    ['crossHelp', 'Associates and seniors help other departments, not Audit (1/0)', 1, 'v2', 'Staff levels', 'n'],
+    ['crossSpeed', 'Speed when helping another department', 0.75, 'v2', 'Staff levels', 'p'],
+  );
+  // share of revenue by service slot, for a small firm (about $200K or less) and a large one ($10M or more)
+  C.FIRM_TYPES = {
+    tax: { name: 'Tax practice', small: { 2: 50, 3: 25, 17: 12, 18: 5, 9: 4, 14: 2, 15: 2 }, large: { 2: 20, 3: 40, 17: 5, 18: 15, 9: 5, 14: 8, 15: 7 } },
+    books: { name: 'Bookkeeping practice', small: { 1: 50, 4: 25, 5: 5, 2: 12, 3: 8 }, large: { 1: 35, 4: 30, 5: 15, 2: 8, 3: 12 } },
+    full: { name: 'Full-service firm', small: { 1: 25, 4: 10, 5: 5, 2: 30, 3: 20, 17: 3, 18: 2, 9: 3, 15: 2 }, large: { 1: 3, 4: 2, 5: 8, 6: 7, 10: 25, 16: 10, 2: 8, 3: 22, 18: 6, 17: 2, 9: 3, 14: 2, 15: 2 } },
+    audit: { name: 'Audit & assurance firm', small: { 10: 60, 16: 15, 14: 10, 3: 15 }, large: { 10: 60, 16: 15, 14: 10, 3: 15 } },
+    cfo: { name: 'Outsourced accounting & CFO firm', small: { 5: 40, 6: 30, 7: 10, 8: 5, 3: 10, 18: 5 }, large: { 5: 25, 6: 25, 7: 20, 8: 15, 3: 10, 18: 5 } },
+  };
+  // chance of each type by the size of the firm for sale
+  C.FIRM_ODDS = [[500000, { tax: 45, books: 35, full: 20, audit: 0, cfo: 0 }], [5000000, { tax: 30, books: 15, full: 35, audit: 12, cfo: 8 }], [Infinity, { tax: 15, books: 5, full: 40, audit: 25, cfo: 15 }]];
+  const sizeF = (rev) => clamp(Math.log(Math.max(rev, 1) / 200000) / Math.log(50), 0, 1);
+  C.pickFirmType = function (s, rev) {
+    const odds = C.FIRM_ODDS.find(([cap]) => rev < cap)[1], tot = Object.values(odds).reduce((a, v) => a + v, 0);
+    let r = R.next(s) * tot;
+    for (const [k, v] of Object.entries(odds)) { if ((r -= v) < 0) return k; }
+    return 'full';
+  };
+  C.firmShares = function (type, rev) {
+    const T = C.FIRM_TYPES[type], f = sizeF(rev), out = {};
+    new Set([...Object.keys(T.small), ...Object.keys(T.large)]).forEach(k => { const v = (T.small[k] || 0) * (1 - f) + (T.large[k] || 0) * f; if (v > 0) out[k] = v; });
+    return out;
+  };
+  // Fill a deal: type, client mix, the service lines it starts, and revenue at the value of its clients
+  C.typedDeal = function (s, d, specialtyFn) {
+    const kind = d.kind || C.pickFirmType(s, d.revenue), shares = C.firmShares(kind, d.revenue);
+    const extra = (specialtyFn ? specialtyFn(s, d.revenue) : []).filter(sl => sl !== 10); // Valuation, Forensic, International Tax
+    if (d.revenue < 500000) { delete shares[10]; delete shares[16]; } // Audit only shows up in firms of $500K or more
+    if (extra.includes(13)) shares[13] = (shares[13] || 0) + 2;
+    const tot = Object.values(shares).reduce((a, v) => a + v, 0), svc = (sl) => s.services.find(x => x.slot === sl);
+    const auditFee = svc(10).fee, auditComing = svc(10).offered || (shares[10] && Math.round(d.revenue * shares[10] / tot / auditFee) > 0);
+    const mix = {}, lines = [];
+    Object.entries(shares).forEach(([sl, sh]) => {
+      const x = svc(+sl); if (!x || x.type === 'Project' || x.slot === 23) return;
+      if (x.slot === 16 && !auditComing) return; // benefit plan audits need Audit & Assurance
+      const c = Math.round(d.revenue * sh / tot / x.fee); if (c <= 0) return;
+      mix[x.slot] = c; if (!x.offered) lines.push(x.slot);
+    });
+    extra.forEach(sl => { if (!svc(sl).offered && !lines.includes(sl)) lines.push(sl); });
+    d.kind = kind; d.kindName = C.FIRM_TYPES[kind].name; d.mix = mix; d.lines = lines;
+    if (!d.top500) { // a practice sells at the value of its clients, so rounding never leaves you paying for clients that aren't there
+      const book = Object.entries(mix).reduce((a, [sl, c]) => a + c * svc(+sl).fee, 0);
+      if (book > 0 && d.revenue > 0) { d.price = Math.round(d.price * book / d.revenue / 1000) * 1000; d.revenue = book; }
+    }
+    return d;
+  };
+  C.dealClientsText = function (s, d) {
+    const e = Object.entries(d.mix || {}).map(([sl, c]) => { const x = s.services.find(v => v.slot === +sl); return [x, c, c * x.fee]; }).sort((a, b) => b[2] - a[2]);
+    return e.length ? 'Clients: ' + e.slice(0, 4).map(([x, c]) => c + ' ' + x.short).join(', ') + (e.length > 4 ? ' and ' + (e.length - 4) + ' more services' : '') + '.' : '';
+  };
+  C.register({
+    id: 'focus',
+    migrate(s) { s.pendingDeals = s.pendingDeals || []; },
+    stages: [
+      // clients from a deal arrive the month after it closes, with its staff
+      { id: 'dealClients', before: 'compute', run(s, cur) {
+        const due = (s.pendingDeals || []).filter(p => p.t <= cur.t); if (!due.length) return;
+        due.forEach(p => Object.entries(p.mix).forEach(([sl, n]) => { const x = s.services.find(v => v.slot === +sl); if (x && x.offered) x.clients += n; }));
+        s.pendingDeals = s.pendingDeals.filter(p => p.t > cur.t);
+      } },
+    ],
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -3317,7 +3440,7 @@ main:has(.stickybar){padding-bottom:230px}
     const watch = (S.watch || []).map((w, i) => {
       const d = w.deal, col = C.dealColor(S, d), left = w.until - C.nextTurn(S) + 1;
       const lines = d.lines.map(sl => S.services.find(x => x.slot === sl).short);
-      return `<li class="deal ${col}"><div class="off-h"><div><b>${esc(d.name)}</b><span>${d.top500 ? 'Top 500 firm · ' : ''}${esc(d.main[0])} · ${esc(C.cityRegion(d.main[0], d.main[1]))}${lines.length ? ' · brings ' + esc(lines.join(', ')) : ''}</span></div><span class="pill ${col === 'green' ? 'on' : col === 'yellow' ? 'soon' : 'bad'}">${left} mo left</span></div>
+      return `<li class="deal ${col}"><div class="off-h"><div><b>${esc(d.name)}</b><span>${d.kindName ? esc(d.kindName) + ' · ' : ''}${d.top500 ? 'Top 500 firm · ' : ''}${esc(d.main[0])} · ${esc(C.cityRegion(d.main[0], d.main[1]))}${lines.length ? ' · brings ' + esc(lines.join(', ')) : ''}</span></div><span class="pill ${col === 'green' ? 'on' : col === 'yellow' ? 'soon' : 'bad'}">${left} mo left</span></div>
         <div class="facts"><span>Revenue <b class="num">${sh(d.revenue)}</b></span><span>Price <b class="num">${sh(d.price)}</b></span><span><b class="num">${$$(d.price / st.payTerm)}</b>/mo</span><span>${d.staff ? `<b class="num">${d.staff}</b> staff` : 'No staff'}</span></div>
         <div class="chips"><button class="chip act" data-wbuy="${i}"${noBuy ? ' disabled' : ''}>Buy…</button><button class="chip" data-wdrop="${i}"${busy ? ' disabled' : ''}>Drop</button></div></li>`;
     }).join('');
