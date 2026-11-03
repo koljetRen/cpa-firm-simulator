@@ -10,6 +10,12 @@ Open `index.html` in any modern browser. There's no build step and no server.
 
 To host it online, enable **GitHub Pages** (Settings → Pages → Deploy from a branch → `main` / root). The game will be at `https://<username>.github.io/cpa-firm-simulator/`.
 
+## What's new in 2.11.0
+
+- **Hours by staff level.** Every service splits its hours across associates, seniors, managers and directors. Bookkeeping and simple returns are mostly associate work; fractional CFO work is mostly managers and directors. Work flows down only: a director can do manager work, never the reverse. Staff work in their own department, and you count as a director anywhere. When a level runs short, services that need it stop winning clients and lose more of them. The Hiring desk shows load by level, and the Clients tab shows each service's mix and what's holding it back. You can turn this off in Settings.
+- **Integration pause.** Buying a firm bigger than 90% of your revenue pauses acquisitions for about 12 months per 1× your revenue (12–36 months). Smaller deals don't pause. You can still Hold firms during a pause.
+- **Smaller saves.** The mergers log keeps the last 3 years of every deal and the last 10 years of top 500 deals. If this device ever fails to save, a warning appears on every screen.
+
 ## What's new in 2.10.0
 
 - **Tutorial.** Every New Game asks whether you want a guided tutorial or to skip it. The tutorial starts a preset firm and walks you through each screen, and you can replay it from Settings.

@@ -44,6 +44,7 @@ main{max-width:880px;margin:0 auto;padding-block:14px 110px;padding-left:max(16p
 .panel{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel p{margin:0}
 .notice{background:var(--accent-soft);color:var(--ink);border-radius:8px;padding:10px 14px;font-weight:600}
+.warnbox{background:var(--neg-soft);color:var(--ink);border:1.5px solid var(--neg);border-radius:8px;padding:10px 14px}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:10px 11px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .kpi b{font-size:1.1rem;overflow-wrap:anywhere}
@@ -102,6 +103,7 @@ rect.rev{fill:var(--accent);opacity:.35}
 .svc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .svc-n{display:flex;flex-direction:column;min-width:0}
 .svc-n span{font-size:.8rem;color:var(--muted)}
+.svc-n span.warnline{color:var(--neg)}
 .svc-f{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .svc-f span{display:flex;flex-direction:column;min-width:0}
 .svc-f em{font-style:normal;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
@@ -224,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.10.0'; // phases 9–10 and the next update (tutorial, IPA 500 tab, multi-launch, acquired staff)
+  CPA.VERSION = '2.11.0'; // staff levels, integration pause, smaller saves
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -456,6 +458,7 @@ main:has(.stickybar){padding-bottom:230px}
     // LOST CLIENTS
     const Um = 1 + st.priceChurn * Math.max(0, price);
     let Sm = 1 + st.overloadChurn * Math.max(0, prev.workload - 1);
+    const lvl = CPA.levelLimits ? CPA.levelLimits(s, t, pot, evCap) : null; // Nov 3 update: hours by staff level
     const lg = CPA.hook('leadershipGap', s, t).find(Boolean); // phase 2
     if (lg && lg.needed > 0 && lg.gap > 0) Sm *= 1 + st.missingDirectorChurn * Math.min(1, lg.gap / lg.needed);
 
@@ -463,10 +466,10 @@ main:has(.stickybar){padding-bottom:230px}
     svcs.forEach((x, i) => {
       const sl = x.slot, prevC = x.clients;
       let nw = 0, lost = 0, clients, basis;
-      if (on[i]) nw = Math.max(0, Math.floor(pot[i] * O + frac(u + sl * 0.618034)));
+      if (on[i]) nw = Math.max(0, Math.floor(pot[i] * (lvl ? Math.min(O, lvl.win[sl] == null ? 1 : lvl.win[sl]) : O) + frac(u + sl * 0.618034)));
       if (!on[i]) lost = prevC;
       else if (x.type === 'Project') lost = 0;
-      else lost = Math.min(prevC, Math.floor(prevC * Math.max(0, x.churn * Um * Sm * (mods.churn[x.slot] || 1) + evChurn) + frac(u + sl * 0.618034 + 0.5)));
+      else lost = Math.min(prevC, Math.floor(prevC * Math.max(0, x.churn * Um * Sm * (mods.churn[x.slot] || 1) * (lvl && lvl.churn[sl] || 1) + evChurn) + frac(u + sl * 0.618034 + 0.5)));
       if (x.type === 'Project') {
         const past = s.history.svc.slice(-11).reduce((a, r) => a + (r[i] ? r[i].new : 0), 0);
         clients = on[i] ? nw + past : 0;
@@ -1296,12 +1299,20 @@ main:has(.stickybar){padding-bottom:230px}
   /* ---------- storage ---------- */
   // Saves go to this device right away and to your claude.ai account a moment later (survives closing
   // a home-screen app, works across devices). A save is split into parts under the 256 KiB record limit.
-  let cloud = null, cloudTimer = null, cloudBusy = false, cloudState = 'connecting';
+  let cloud = null, cloudTimer = null, cloudBusy = false, cloudState = 'connecting', saveFail = false, saveKB = 0;
   const PART = 100000;
   function save() {
     if (S) S.meta.savedAt = Date.now();
-    try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { /* storage blocked: the account copy still works */ }
+    const txt = C.serialize(S); saveKB = Math.round(txt.length / 1024);
+    const was = saveFail;
+    try { localStorage.setItem(KEY, txt); saveFail = false; } catch (e) { saveFail = true; } // storage full or blocked
+    if (was !== saveFail) { const el = document.getElementById('savewarn'); if (el) el.outerHTML = saveWarnHTML(); }
     scheduleCloud();
+  }
+  function saveWarnHTML() {
+    if (!saveFail) return '<div id="savewarn" hidden></div>';
+    const acct = cloud && cloudState !== 'error' && cloudState !== 'off';
+    return `<div id="savewarn" class="warnbox" role="alert"><b>This device couldn't save your game.</b> ${acct ? 'Its storage is full or blocked. Your claude.ai account copy is still saving, so your progress is safe there.' : 'Its storage is full or blocked, and there is no account copy here, so progress since the last save will be lost if you close this page. Copy a save code in Settings to keep a backup.'}</div>`;
   }
   function scheduleCloud() { if (!cloud) return; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1500); }
   async function pushCloud() {
@@ -1387,7 +1398,7 @@ main:has(.stickybar){padding-bottom:230px}
     const rank = C.liveRank(S);
     $('#hdr').innerHTML = `<div class="hdr-in"><div class="brand"><span class="firm">${esc(S.meta.firmName)}</span><span class="sub">${S.offices.length ? esc(C.cityBase(S.offices[0].city)) + ' HQ' : 'Remote · Rexburg'} · ${playedN ? 'Through ' + cur : 'Opens ' + C.monthLabel(S, 1)}</span></div><div class="rankchip" title="Live rank on the IPA 500"><span>Rank</span><b>${rank === '500+' ? '500+' : '#' + rank}</b></div></div>`;
     const T = UI.tabs.find(x => x.id === tab) || UI.tabs[0];
-    app.innerHTML = (notice ? `<div class="notice" role="status">${esc(notice)}</div>` : '') + T.render();
+    app.innerHTML = saveWarnHTML() + (notice ? `<div class="notice" role="status">${esc(notice)}</div>` : '') + T.render();
     notice = '';
     $('#tabs').innerHTML = UI.tabs.map(x => `<button class="tab${x.id === T.id ? ' on' : ''}" data-tab="${x.id}" aria-label="${x.label}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${x.icon}"/></svg><span>${x.label}</span></button>`).join('');
     renderCard();
@@ -1461,22 +1472,24 @@ main:has(.stickybar){padding-bottom:230px}
   function renderClients() {
     const t = C.nextTurn(S), r12 = C.revT12(S), price = S.decisions.price;
     const launchable = C.launchable(S);
+    const lvLoNow = C.levelLoads && +S.settings.levelsOn ? C.levelLoads(S) : null;
+    const mixText = (x) => { if (!C.levelMix || !+S.settings.levelsOn) return ''; const m = C.levelMix(x); return m.map((f, k) => f > 0 ? Math.round(f * 100) + '% ' + ['assoc.', 'senior', 'mgr', 'dir.'][k] : '').filter(Boolean).join(' · '); };
     const rows = S.services.map((x, i) => {
-      const on = x.offered, rev = C.svcRevT12(S, i);
+      const on = x.offered, rev = C.svcRevT12(S, i), held = C.serviceLevelNote ? C.serviceLevelNote(S, x, lvLoNow) : '';
       let status;
       if (on) status = x.fromTurn > C.played(S) ? `<span class="pill soon">Starts ${C.monthLabel(S, x.fromTurn)}</span>` : `<span class="pill on">Offered</span>`;
       else if (launchable.includes(x)) status = launchPick.includes(x.slot) ? `<button class="chip on" data-launch="${x.slot}" aria-pressed="true">✓ Selected</button>` : `<button class="chip act" data-launch="${x.slot}" aria-pressed="false">Select to launch</button>`;
       else if (C.serviceGateText && x.launch === 'launch' && C.serviceGateText(S, x)) status = `<span class="pill lock">${esc(C.serviceGateText(S, x))}</span>`;
       else if (x.launch === 'afterAudit') status = `<span class="pill lock">After Audit &amp; Assurance</span>`;
       else status = `<span class="pill lock">Comes with a bought firm</span>`;
-      return `<li class="svc${on ? '' : ' off'}"><div class="svc-h"><div class="svc-n"><b>${esc(x.name)}</b><span>${esc(x.type)} · ${esc(x.group)} · ${x.hpc} hrs/client/yr</span>${on && C.serviceGateText && C.serviceGateText(S, x) ? `<span class="warnline small">${esc(C.serviceGateText(S, x))}</span>` : ''}</div>${status}</div>
+      return `<li class="svc${on ? '' : ' off'}"><div class="svc-h"><div class="svc-n"><b>${esc(x.name)}</b><span>${esc(x.type)} · ${esc(x.group)} · ${x.hpc} hrs/client/yr</span>${mixText(x) ? `<span>Work: ${esc(mixText(x))}</span>` : ''}${on && C.serviceGateText && C.serviceGateText(S, x) ? `<span class="warnline small">${esc(C.serviceGateText(S, x))}</span>` : ''}${held ? `<span class="warnline small">${esc(held)}</span>` : ''}</div>${status}</div>
         <div class="svc-f"><span><em>Clients</em><b class="num">${x.clients}</b></span><span><em>Fee / yr</em><b class="num">${money(x.fee * (1 + price))}</b></span><span><em>Rev 12 mo</em><b class="num">${money(rev, true)}</b></span><span><em>Share</em><b class="num">${r12 > 0 ? pct(rev / r12) : '—'}</b></span></div></li>`;
     }).join('');
     launchPick = launchPick.filter(sl => launchable.some(x => x.slot === sl));
     const picks = launchPick.map(sl => S.services.find(x => x.slot === sl));
     return `<section class="panel"><h2>Clients and services</h2>
       <div class="facts"><span><b class="num">${C.totalClients(S)}</b> clients</span><span>Revenue 12 mo <b class="num">${money(r12, true)}</b></span><span>YTD <b class="num">${money(C.revYTD(S), true)}</b></span></div>
-      <p class="muted small">Fees shown at your price change (${price > 0 ? '+' : ''}${pct(price)}). Project services count engagements won in the last 12 months.</p></section>
+      <p class="muted small">Fees shown at your price change (${price > 0 ? '+' : ''}${pct(price)}). Project services count engagements won in the last 12 months.${+S.settings.levelsOn ? ' "Work" shows who does each service\'s hours. Work flows down: a director can do manager, senior or associate work, but not the reverse, and people work in their own department (you can work anywhere).' : ''}</p></section>
       ${launchable.length ? `<p class="muted small">Tap <b>Select to launch</b> on as many services as you like, then launch them together from the bar at the bottom.</p>` : ''}
       <ul class="svcs">${rows}</ul>
       ${picks.length ? `<div class="stickybar" role="region" aria-label="Launch selected services"><div><b>Launch ${picks.length} service${picks.length > 1 ? 's' : ''} from ${C.monthLabel(S, t)}</b><span>${esc(picks.map(x => x.short).join(', '))} · ${money(picks.reduce((a, x) => a + x.fee, 0))}/yr in list fees per client</span></div><button class="btn primary" data-launchyes="1">Launch</button><button class="btn" data-launchno="1">Clear</button></div>` : ''}`;
@@ -1506,6 +1519,7 @@ main:has(.stickybar){padding-bottom:230px}
       <div class="kv"><span>Seed in use</span><b class="num">${S.meta.seed}</b></div>
       <div class="kv"><span>Started</span><b>${C.monthLabel(S, 1)}</b></div>
       <div class="kv"><span>Months played</span><b class="num">${C.played(S)}</b></div>
+      <div class="kv"><span>Save size</span><b class="num">${saveKB || Math.round(C.serialize(S).length / 1024)} KB</b></div>
       <div class="kv"><span>Version</span><b>${C.VERSION} (${C.PHASE})</b></div>
       ${confirmNew ? `<div class="confirm"><h3>Start a new game?</h3><p>This clears every month played, your services and your clients. It starts in ${C.MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}.</p>
         <label class="field" for="ng-name"><span>Firm name</span><input id="ng-name" type="text" value="${esc(S.meta.firmName)}"></label>
@@ -1599,7 +1613,7 @@ main:has(.stickybar){padding-bottom:230px}
     const found = (hot && hot.save && (() => { try { return C.deserialize(hot.save); } catch (e) { return null; } })()) || load();
     S = found || C.newGame({});
     if (!found) S.meta.savedAt = 0; // a brand-new game never wins over a save in your account
-    C.advance(S); try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { } render();
+    C.advance(S); try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { saveFail = true; } render();
     // A first visit is a new game: offer the tutorial once we know no save is waiting in your account.
     initCloud().then(() => { if (!found && C.played(S) === 0 && UI.askTutorial) UI.askTutorial(() => { if (C.played(S) === 0) startGame({ tutorial: true }); }, () => { }); });
   }
@@ -2348,6 +2362,7 @@ main:has(.stickybar){padding-bottom:230px}
     <section class="panel"><h2>Hiring desk</h2>
       <div class="tablewrap"><table class="log"><thead><tr><th>Group</th><th>Work hrs/yr</th><th>Can do hrs/yr</th><th>Load</th></tr></thead><tbody>${lt.map(r => `<tr><th>${r.group}</th><td>${Math.round(r.demand).toLocaleString()}</td><td>${Math.round(r.capacity).toLocaleString()}</td><td class="${r.load >= 0.8 ? 'neg' : ''}">${r.load >= 9.99 ? 'no staff' : Math.round(r.load * 100) + '%'}${r.load >= 0.8 ? ' · needs help' : ''}</td></tr>`).join('')}</tbody></table></div>
       <p class="muted small">Work includes admin work your accountants pick up when admin staff can't cover it. Admin assistants can take up to ${Math.round(S.settings.adminShare * 100)}% of admin work; the Admin row shows how much of that they cover.</p>
+      ${C.levelLoads && +S.settings.levelsOn ? (() => { const lo = C.levelLoads(S, t), ds = Object.keys(lo).filter(d => lo[d].demand.some(v => v > 0)); return ds.length ? `<h3>Work by staff level</h3><div class="tablewrap"><table class="log"><thead><tr><th>Group</th>${C.LEVELS.map(l => `<th>${l}</th>`).join('')}</tr></thead><tbody>${ds.map(d => `<tr><th>${esc(d)}</th>${lo[d].load.map((v, k) => lo[d].demand.slice(k).some(x => x > 0) ? `<td class="${v >= 0.8 ? 'neg' : ''}">${v >= 9.99 ? 'none free' : Math.round(v * 100) + '%'}</td>` : '<td class="muted">—</td>').join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Each column compares that level's work (and the levels above it) with the people at that level and above. Red is 80% or more. Over 100% (or "none free") means services needing that level stop winning clients and lose more of them: hire or promote at that level. Bookkeepers and interns count as associates; you count as a director anywhere.</p>` : ''; })() : ''}
       <p class="muted small">Open now: ${C.hireableRoles(S, 'any').map(r => esc(r) + ' (' + C.openSpots(S, r) + ')').join(', ') || 'none'}.</p></section>
     <section class="panel"><h2>Recruiting and HR</h2>
       <div class="facts"><span>Recruiters <b class="num">${C.recruiters(S).length}</b></span><span>Regions covered <b class="num">${C.coveredRegions(S).length}</b></span><span>HR coverage <b class="num">${Math.round(C.hrCoverage(S) * 100)}%</b> (turnover −${Math.round(S.settings.hrTurnoverCut * C.hrCoverage(S) * 100)}%)</span></div>
@@ -2717,7 +2732,7 @@ main:has(.stickybar){padding-bottom:230px}
         const down = a.v[0] === 'p' ? d.price * (+a.v.slice(1)) / 100 : Math.max(0, +a.n || 0);
         if (down > C.cash(s) + 0.5) { C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Not enough cash', data: { lines: ['That down payment is more than your cash (' + fmt$(C.cash(s)) + ').'] } }); return; }
         const r = C.completeDeal(s, d, down);
-        C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Done! ' + d.name + ' is yours', data: { lines: [{ k: 'People joining next month', v: String(r.people) }, { k: 'Directors · admin', v: r.dirs + ' · ' + r.admin }, { k: 'Offices added', v: String(r.offices) }, { k: 'New service lines', v: r.newLines.join(', ') || 'None' }, { k: 'Down payment', v: fmt$(r.down) }, { k: 'Monthly payment', v: r.monthly ? fmt$(r.monthly) + ' for ' + s.settings.payTerm + ' months' : 'None (paid in full)' }, Object.entries(r.roles).map(([k, v]) => v + ' ' + k).join(', ')] } });
+        C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Done! ' + d.name + ' is yours', data: { lines: [{ k: 'People joining next month', v: String(r.people) }, { k: 'Directors · admin', v: r.dirs + ' · ' + r.admin }, { k: 'Offices added', v: String(r.offices) }, { k: 'New service lines', v: r.newLines.join(', ') || 'None' }, { k: 'Down payment', v: fmt$(r.down) }, { k: 'Monthly payment', v: r.monthly ? fmt$(r.monthly) + ' for ' + s.settings.payTerm + ' months' : 'None (paid in full)' }, Object.entries(r.roles).map(([k, v]) => v + ' ' + k).join(', '), ...(r.integration ? ['Integration: ' + d.name + ' is ' + Math.round(r.integration.ratio * 100) + '% of your revenue, so acquisitions pause for ' + r.integration.months + ' months, until ' + C.monthLabel(s, r.integration.until + 1) + '.'] : [])] } });
       },
       payDown(s, card, a) {
         if (!a || a.v === 'cancel') return; const pl = s.acqPlans[card.data.i]; if (!pl) return;
@@ -2842,8 +2857,9 @@ main:has(.stickybar){padding-bottom:230px}
       { k: 'Revenue', v: fmt$(d.revenue) }, { k: 'Asking price', v: fmt$(d.price) }, { k: 'Monthly payment (no down)', v: fmt$(d.price / st.payTerm) },
       { k: 'Fits your budget?', v: col === 'green' ? 'Green: can afford' : col === 'yellow' ? 'Yellow: a stretch' : 'Red: can\'t afford yet' },
       { k: 'Main office', v: d.main[0] + ' · ' + C.cityRegion(d.main[0], d.main[1]) }, { k: 'Staff', v: d.staff ? String(d.staff) : 'None (the owner sells the client list)' }, { k: 'Brings', v: lines.join(', ') || 'No new service lines' },
-      d.top500 ? 'A top 500 firm (#' + d.top500 + ').' : 'Most offers are now or never. Hold keeps it on your watch list for up to ' + st.holdMonths + ' months while you negotiate or save up.'],
-      buttons: [{ value: 'buy', label: 'Buy…', primary: true }, ...(fromHold ? [] : [{ value: 'hold', label: 'Hold' }]), { value: 'pass', label: 'Pass' }] } });
+      d.top500 ? 'A top 500 firm (#' + d.top500 + ').' : 'Most offers are now or never. Hold keeps it on your watch list for up to ' + st.holdMonths + ' months while you negotiate or save up.',
+      ...(C.integrating && C.integrating(s) ? ['You\'re integrating ' + C.integrating(s).firm + ' until ' + C.monthLabel(s, C.integrating(s).until + 1) + ', so you can\'t buy right now. Hold it to buy later.'] : [])],
+      buttons: [...(C.integrating && C.integrating(s) ? [] : [{ value: 'buy', label: 'Buy…', primary: true }]), ...(fromHold ? [] : [{ value: 'hold', label: 'Hold', primary: !!(C.integrating && C.integrating(s)) }]), { value: 'pass', label: 'Pass' }] } });
   }
   function monthlyOffer(s, t) {
     const st = s.settings;
@@ -2980,6 +2996,180 @@ main:has(.stickybar){padding-bottom:230px}
   });
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
+<script>/* ===== CPA Firm Simulator v2 — STAFF LEVELS, INTEGRATION, SAVE SIZE (Nov 3 update) =====
+   1 Every service's hours are split across associates, seniors, managers and directors. Work flows down
+     only (a director can do manager, senior or associate work, never the reverse) and stays in each
+     department; generalist managers and directors still help Valuation, Forensic and Financial Planning,
+     and you count as a director anywhere. Bookkeepers and interns count as associates. When a level runs
+     out, services that need it stop winning clients and lose more of them. Admin work keeps its own rules.
+   2 Buying a firm bigger than 90% of your revenue starts an integration pause on acquisitions.
+   3 The mergers log keeps 3 years of everything and 10 years of top 500 deals. Decided with Jaye. */
+(function (G) {
+  const C = G.CPA, RI = C.ROLE_INFO, { clamp } = C.util;
+  const refTurn = (s) => s.cur ? s.cur.t : C.nextTurn(s);
+  C.SETTINGS.push(
+    ['levelsOn', 'Services need hours from each staff level (1/0)', 1, 'v2', 'Staff levels', 'n'],
+    ['integrateAt', 'Deals bigger than this share of your revenue start an integration pause', 0.9, 'v2', 'Version 2 market', 'p'],
+    ['integrateMonths', 'Integration months per 1× your revenue bought', 12, 'v2', 'Version 2 market', 'n'],
+    ['integrateMin', 'Shortest integration pause (months)', 12, 'v2', 'Version 2 market', 'n'],
+    ['integrateMax', 'Longest integration pause (months)', 36, 'v2', 'Version 2 market', 'n'],
+  );
+
+  /* ---------- 1. Hours by staff level ---------- */
+  C.LEVELS = ['Associate', 'Senior', 'Manager', 'Director'];
+  // share of each service's hours: associates, seniors, managers, directors (starting numbers for balancing)
+  C.LEVEL_MIX = {
+    1: [.70, .20, .10, 0], 4: [.65, .25, .10, 0], 5: [.50, .30, .15, .05], 6: [.25, .35, .30, .10], 7: [.10, .20, .40, .30], 8: [.05, .15, .40, .40], 23: [.20, .30, .35, .15],
+    2: [.70, .20, .10, 0], 3: [.50, .30, .15, .05], 9: [.40, .35, .20, .05], 13: [.25, .35, .30, .10], 14: [.45, .35, .15, .05], 15: [.60, .25, .15, 0], 17: [.30, .40, .25, .05], 18: [.20, .35, .35, .10], 22: [.20, .35, .35, .10],
+    10: [.40, .35, .20, .05], 16: [.40, .35, .20, .05], 11: [.20, .40, .30, .10], 12: [.20, .30, .30, .20],
+    19: [.30, .40, .25, .05], 20: [.20, .35, .35, .10], 21: [.30, .40, .25, .05],
+  };
+  C.levelMix = (x) => C.LEVEL_MIX[x.slot] || [.5, .3, .15, .05];
+  const levelsOn = (s) => +s.settings.levelsOn === 1;
+  const lvlOf = (i) => Math.max(0, Math.min(3, (i.lvl || 1) - 1)); // intern 0 and associate 1 -> 0, senior -> 1, manager -> 2, director -> 3
+
+  // Capacity buckets: own-department hours by level (extra = other departments a generalist can help)
+  function buckets(s, t, evCap) {
+    const yrF = 12 + 6 * s.settings.busyOvertime, heads = C.officeHeads(s, t), out = []; let bk = 0;
+    C.activePeople(s, t).forEach(p => {
+      const r = C.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'];
+      if (r[5] === 'Admin' || r[5] === 'None') return;
+      const h = (C.hoursOf ? C.hoursOf(s, p, r) : (p.hours || r[4])) * (p.hc || 1) * yrF * C.outputOf(s, p) * C.crowd(s, p, t, heads) * evCap;
+      if (r[5] === 'Bookkeeper') { bk += h; return; }
+      const i = RI[p.role] || {};
+      if (p.id === 1 || i.lvl === 9) { out.push({ d: null, L: 3, extra: null, h, you: true }); return; }
+      const extra = (i.groups || []).filter(g => g !== i.dept);
+      out.push({ d: i.dept, L: lvlOf(i), extra: extra.length ? extra : null, h });
+    });
+    return { list: out, bk };
+  }
+  // Committed yearly hours by department and level (current clients)
+  function demandOf(s, t, extraBySlot) {
+    const dem = {};
+    s.services.forEach(x => {
+      if (!C.isOffered(x, t) && !(x.offered && x.fromTurn != null)) return;
+      const n = x.type === 'Project' ? x.clients : x.clients; // projects count engagements in the last 12 months
+      const h = (n + ((extraBySlot && extraBySlot[x.slot]) || 0)) * x.hpc; if (h <= 0) return;
+      const m = C.levelMix(x), d = dem[x.group] = dem[x.group] || [0, 0, 0, 0];
+      m.forEach((f, k) => { d[k] += h * f; });
+    });
+    return dem;
+  }
+  // Allocate work to people: top level first, cheapest qualified level first, own department first
+  function allocate(s, dem, bks) {
+    const list = bks.list.map(b => Object.assign({}, b)), unmet = {};
+    const casA = s.services.filter(x => (x.slot === 1 || x.slot === 4) && x.offered).reduce((a, x) => a + x.clients * x.hpc * C.levelMix(x)[0], 0);
+    if (bks.bk > 0) list.push({ d: 'CAS', L: 0, extra: null, h: Math.min(bks.bk, casA), bk: true });
+    const take = (need, k, pool) => { for (let L = k; L <= 3 && need[k] > 1e-9; L++) pool.filter(b => b.L === L).forEach(b => { const x = Math.min(b.h, need[k]); b.h -= x; need[k] -= x; }); };
+    Object.keys(dem).forEach(d => {
+      const need = dem[d].slice();
+      const own = list.filter(b => b.d === d).sort((a, b) => (a.extra ? 1 : 0) - (b.extra ? 1 : 0));
+      for (let k = 3; k >= 0; k--) take(need, k, own);
+      unmet[d] = need;
+    });
+    Object.keys(dem).forEach(d => {
+      const need = unmet[d]; if (!need.some(v => v > 1e-9)) return;
+      const flex = list.filter(b => b.you || (b.extra && b.extra.includes(d))).sort((a, b) => (a.you ? 1 : 0) - (b.you ? 1 : 0));
+      for (let k = 3; k >= 0; k--) take(need, k, flex);
+    });
+    return { list, unmet };
+  }
+  // For each department: load at each level (that level's work and above vs. the people at that level and above)
+  function loads(s, dem, al) {
+    const out = {};
+    Object.keys(dem).forEach(d => {
+      const D = dem[d], U = al.unmet[d], L = [0, 0, 0, 0], room = [0, 0, 0, 0];
+      for (let k = 0; k <= 3; k++) {
+        let cd = 0, cu = 0; for (let l = k; l <= 3; l++) { cd += D[l]; cu += U[l]; }
+        const left = al.list.filter(b => b.L >= k && (b.d === d || b.you || (b.extra && b.extra.includes(d)))).reduce((a, b) => a + b.h, 0);
+        room[k] = cu > 1e-6 ? 0 : left;
+        const cap = cd - cu + left;
+        L[k] = cap > 0 ? cd / cap : (cd > 0 ? 9.99 : 0);
+      }
+      out[d] = { load: L, room, demand: D, unmet: U };
+    });
+    return out;
+  }
+  C.levelLoads = function (s, t = refTurn(s)) {
+    const dem = demandOf(s, t), al = allocate(s, dem, buckets(s, t, 1));
+    return loads(s, dem, al);
+  };
+  // Engine hook: share of potential new clients each service can take, and extra losses where a level is overloaded
+  C.levelLimits = function (s, t, pot, evCap) {
+    if (!levelsOn(s)) return null;
+    const dem = demandOf(s, t), lo = loads(s, dem, allocate(s, dem, buckets(s, t, evCap)));
+    const newD = {};
+    s.services.forEach((x, i) => { const n = (pot[i] || 0) * x.hpc; if (n <= 0) return; const d = newD[x.group] = newD[x.group] || [0, 0, 0, 0]; C.levelMix(x).forEach((f, k) => { d[k] += n * f; }); });
+    const win = {}, churn = {};
+    s.services.forEach(x => {
+      const l = lo[x.group], m = C.levelMix(x), nd = newD[x.group];
+      let f = 1, over = 0;
+      for (let k = 0; k <= 3; k++) {
+        if (m.slice(k).reduce((a, v) => a + v, 0) <= 0) continue; // this service needs no work at this level or above
+        if (l) over = Math.max(over, l.load[k]);
+        if (nd) { const cn = nd.slice(k).reduce((a, v) => a + v, 0); if (cn > 0) f = Math.min(f, (l ? l.room[k] : levelRoomNoDemand(s, t, x.group, k, evCap)) / cn); }
+      }
+      win[x.slot] = clamp(f, 0, 1);
+      if (over > 1) churn[x.slot] = 1 + s.settings.overloadChurn * (over - 1);
+    });
+    return { win, churn, loads: lo };
+  };
+  // a department with no clients yet: room is everyone who could do that level of its work
+  function levelRoomNoDemand(s, t, d, k, evCap) {
+    const b = buckets(s, t, evCap);
+    return b.list.filter(x => x.L >= k && (x.d === d || x.you || (x.extra && x.extra.includes(d)))).reduce((a, x) => a + x.h, 0) + (d === 'CAS' && k === 0 ? b.bk : 0);
+  }
+  // Which level holds a service back right now (for the Clients tab)
+  C.serviceLevelNote = function (s, x, lo) {
+    if (!levelsOn(s) || !x.offered) return '';
+    const l = (lo || C.levelLoads(s))[x.group]; if (!l) return '';
+    const m = C.levelMix(x);
+    for (let k = 3; k >= 0; k--) { if (m.slice(k).reduce((a, v) => a + v, 0) > 0 && l.load[k] > 1) return 'Held back: ' + C.LEVELS[k].toLowerCase() + '-level work in ' + x.group + ' is at ' + Math.round(l.load[k] * 100) + '% of what your ' + C.LEVELS[k].toLowerCase() + 's' + (k < 3 ? ' and above' : '') + ' can do'; }
+    return '';
+  };
+
+  /* ---------- 2. Integration pause after a big deal ---------- */
+  C.integrating = (s, t = refTurn(s)) => (s.integration && t <= s.integration.until) ? s.integration : null;
+  const baseComplete = C.completeDeal;
+  C.completeDeal = function (s, d, down) {
+    const st = s.settings, base = C.revenueBase(s), ratio = base > 0 ? d.revenue / base : 99, t = refTurn(s);
+    const r = baseComplete(s, d, down);
+    if (ratio > st.integrateAt) {
+      const months = clamp(Math.round(st.integrateMonths * ratio), st.integrateMin, st.integrateMax);
+      s.integration = { firm: d.name, ratio, months, from: t, until: t + months };
+      r.integration = s.integration;
+    }
+    return r;
+  };
+  const baseBuyCard = C.buyCard;
+  C.buyCard = function (s, d) {
+    const g = C.integrating(s);
+    if (g) return C.pushCardFront(s, { type: 'info', kind: 'choice', title: 'Still integrating ' + g.firm, data: { lines: ['You bought ' + g.firm + ' (' + Math.round(g.ratio * 100) + '% of your revenue at the time), so acquisitions are paused until ' + C.monthLabel(s, g.until + 1) + '.', 'Firms under ' + Math.round(s.settings.integrateAt * 100) + '% of your revenue normally don\'t pause buying, but nothing can be bought while an integration is under way. You can still put firms on Hold.'] } });
+    return baseBuyCard(s, d);
+  };
+
+  /* ---------- 3. Mergers log: 3 years of everything, 10 years of top 500 deals ---------- */
+  const TOP_TYPES = ['Top 500 merger', 'PE roll-up', 'Your acquisition'];
+  C.trimMergers = function (s, y) {
+    const L = s.history.mergers || []; if (!L.length) return 0;
+    y = y || C.monthOf(s, refTurn(s)).y;
+    const n = L.length;
+    s.history.mergers = L.filter(m => m.y > y - 3 || (TOP_TYPES.includes(m.type) && m.y > y - 10));
+    return n - s.history.mergers.length;
+  };
+
+  C.register({
+    id: 'levels',
+    migrate(s) { C.trimMergers(s); },
+    stages: [
+      { id: 'trimMergers', after: 'pe2027', run(s, cur) { if (C.monthOf(s, cur.t).m === (s.settings.marketMonth || 8)) C.trimMergers(s, C.monthOf(s, cur.t).y); } },
+    ],
+    hooks: {
+      summaryLines(s, row) { const g = s.integration; return g && g.until === row.t ? ['Integration of ' + g.firm + ' is complete. You can buy firms again.'] : []; },
+    },
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
 <script>/* ===== Technology and CPE panel (phase 9) — on the Growth tab ===== */
 (function () {
   const C = window.CPA, UI = window.CPA_UI;
@@ -3017,26 +3207,28 @@ main:has(.stickybar){padding-bottom:230px}
   let showAll = false, q = '';
   UI.acqPanel = function () {
     const S = UI.state(), busy = C.busy(S), st = S.settings, r12 = C.revT12(S), y = C.monthOf(S, C.nextTurn(S)).y;
+    const noBuy = busy || !!(C.integrating && C.integrating(S));
     const watch = (S.watch || []).map((w, i) => {
       const d = w.deal, col = C.dealColor(S, d), left = w.until - C.nextTurn(S) + 1;
       const lines = d.lines.map(sl => S.services.find(x => x.slot === sl).short);
       return `<li class="deal ${col}"><div class="off-h"><div><b>${esc(d.name)}</b><span>${d.top500 ? 'Top 500 firm · ' : ''}${esc(d.main[0])} · ${esc(C.cityRegion(d.main[0], d.main[1]))}${lines.length ? ' · brings ' + esc(lines.join(', ')) : ''}</span></div><span class="pill ${col === 'green' ? 'on' : col === 'yellow' ? 'soon' : 'bad'}">${left} mo left</span></div>
         <div class="facts"><span>Revenue <b class="num">${sh(d.revenue)}</b></span><span>Price <b class="num">${sh(d.price)}</b></span><span><b class="num">${$$(d.price / st.payTerm)}</b>/mo</span><span>${d.staff ? `<b class="num">${d.staff}</b> staff` : 'No staff'}</span></div>
-        <div class="chips"><button class="chip act" data-wbuy="${i}"${busy ? ' disabled' : ''}>Buy…</button><button class="chip" data-wdrop="${i}"${busy ? ' disabled' : ''}>Drop</button></div></li>`;
+        <div class="chips"><button class="chip act" data-wbuy="${i}"${noBuy ? ' disabled' : ''}>Buy…</button><button class="chip" data-wdrop="${i}"${busy ? ' disabled' : ''}>Drop</button></div></li>`;
     }).join('');
     const boughtThisYear = new Set(S.market.firms.filter(f => f.boughtByYou && f.boughtYear === y).map(f => f.id));
     const inRegion = (f) => { if (!(S.acqRegions || []).length) return true; const c = C.GEO.cities.find(x => x[0] === f.hq || C.cityBase(x[0]) === C.cityBase(f.hq)); return !!c && C.acqRegionOk(S, c[0], c[1]); };
     const below = C.listedFirms(S).filter(f => f.revenue < r12 && !f.boughtByYou && inRegion(f)).slice(0, 8);
     const plans = S.acqPlans.map((p, i) => `<tr><th>${esc(p.firm)}</th><td>${$$(p.price)}</td><td>${$$(p.down)}</td><td>${$$(p.monthly)}</td><td>${p.monthsLeft}</td><td>${$$(p.monthly * p.monthsLeft)}</td><td>${p.monthsLeft > 0 ? `<button class="chip act" data-paydown="${i}"${busy ? ' disabled' : ''}>Pay down</button>` : 'Paid'}</td></tr>`).join('');
     const ap = S.history.log.slice(-12); const avg = ap.length ? ap.reduce((a, r) => a + r.profit, 0) / ap.length : 0;
-    const regs = S.acqRegions || [];
+    const regs = S.acqRegions || [], integ = C.integrating ? C.integrating(S) : null;
     return `<section class="panel"><div class="soon-h"><h2>Acquisitions</h2><span class="pill on">${(S.watch || []).length} on hold</span></div>
-      <p class="muted small">Firms come up for sale through the year (about ${Math.round(st.offerChance * 12)} a year) as pop-ups: buy, pass, or Hold one for up to ${st.holdMonths} months. Green: the payment fits your average monthly profit (${$$(avg)}). Yellow: it fits only with the bought firm's own profit. Red: you can't afford it yet. Payments run ${st.payTerm} months; you keep ${Math.round(st.retention * 100)}% of its clients.</p>
+      ${integ ? `<p class="note">Integrating ${esc(integ.firm)} (${Math.round(integ.ratio * 100)}% of your revenue when you bought it): no acquisitions until ${C.monthLabel(S, integ.until + 1)}. You can still Hold firms that come up for sale.</p>` : ''}
+      <p class="muted small">Firms come up for sale through the year (about ${Math.round(st.offerChance * 12)} a year) as pop-ups: buy, pass, or Hold one for up to ${st.holdMonths} months. Buying a firm bigger than ${Math.round(st.integrateAt * 100)}% of your revenue pauses acquisitions while you integrate it (about ${st.integrateMonths} months per 1× your revenue, ${st.integrateMin}–${st.integrateMax} months). Green: the payment fits your average monthly profit (${$$(avg)}). Yellow: it fits only with the bought firm's own profit. Red: you can't afford it yet. Payments run ${st.payTerm} months; you keep ${Math.round(st.retention * 100)}% of its clients.</p>
       <div class="kv"><span>Buying in</span><b>${regs.length ? esc(regs.join(', ')) : 'Anywhere'}</b></div>
       <div class="chips"><button class="chip act" data-acqreg="1"${busy ? ' disabled' : ''}>Change regions</button></div>
       ${watch ? `<h3>Hold list</h3><ul class="offs">${watch}</ul>` : '<p class="muted">No firms on hold.</p>'}</section>
     <section class="panel"><h2>Buy a top 500 firm</h2>
-      ${below.length ? `<p class="muted small">Any firm smaller than your ${sh(r12)} yearly revenue, at ${st.top500Price}× revenue.</p><ul class="offs">${below.map(f => `<li class="deal"><div class="off-h"><div><b>#${f.rank} ${esc(f.name)}</b><span>${esc(f.hq)} · ${f.offices} offices</span></div><button class="chip act" data-buy500="${f.id}"${busy ? ' disabled' : ''}>Buy for ${sh(f.revenue * st.top500Price)}</button></div></li>`).join('')}</ul>` : `<p class="muted">The smallest top 500 firm earns ${sh(C.listedFirms(S).at(-1).revenue)} a year. Once your yearly revenue passes a listed firm's, you can buy it here.</p>`}</section>
+      ${below.length ? `<p class="muted small">Any firm smaller than your ${sh(r12)} yearly revenue, at ${st.top500Price}× revenue.</p><ul class="offs">${below.map(f => `<li class="deal"><div class="off-h"><div><b>#${f.rank} ${esc(f.name)}</b><span>${esc(f.hq)} · ${f.offices} offices</span></div><button class="chip act" data-buy500="${f.id}"${noBuy ? ' disabled' : ''}>Buy for ${sh(f.revenue * st.top500Price)}</button></div></li>`).join('')}</ul>` : `<p class="muted">The smallest top 500 firm earns ${sh(C.listedFirms(S).at(-1).revenue)} a year. Once your yearly revenue passes a listed firm's, you can buy it here.</p>`}</section>
     ${plans ? `<section class="panel"><h2>Payment plans</h2><div class="tablewrap"><table class="log"><thead><tr><th>Firm</th><th>Price</th><th>Down</th><th>Monthly</th><th>Left</th><th>Owed</th><th></th></tr></thead><tbody>${plans}</tbody></table></div></section>` : ''}`;
   };
   UI.rankPanel = function () {
@@ -3086,7 +3278,7 @@ main:has(.stickybar){padding-bottom:230px}
     { tab: 'home', at: '.decide .field', title: 'Marketing and price', text: 'Marketing buys leads (about one per $200). We set it to $500 a month for you. The price slider moves all your fees: higher prices earn more per client but win fewer and lose more.' },
     { tab: 'home', at: '[data-act=month]', wait: 'month', title: 'Play your first month', text: 'Tap Play next month. Two dice set the month: a growth roll for leads and an event roll. A pop-up sums up the month; tap Continue to close it. Play year runs through December and stops whenever there is a decision for you.' },
     { tab: 'clients', at: '.svcs', title: 'Clients and services', text: 'Every service shows its clients, fee and share of revenue. Services marked Select to launch can be added: tick as many as you like, then launch them together from the bar at the bottom. Locked ones come with a firm you buy or need something first.' },
-    { tab: 'people', at: '[data-pact=hire]', title: 'Hiring', text: 'Hire someone opens the hiring flow: pick a role, then a candidate (age, experience, degree, school, certifications and pay). The Hiring desk below shows which groups need help; 80% load or more means hire. You will also get pop-ups in August and before busy season.' },
+    { tab: 'people', at: '[data-pact=hire]', title: 'Hiring', text: 'Hire someone opens the hiring flow: pick a role, then a candidate (age, experience, degree, school, certifications and pay). The Hiring desk below shows which groups need help (80% load or more means hire), and which staff level: CFO work needs managers and directors, bookkeeping mostly associates. You will also get pop-ups in August and before busy season.' },
     { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead two teams yourself; after that each team needs a director. Promotions happen May to July, or any time with Promote someone.' },
     { tab: 'more', at: '[data-oact=open]', title: 'Offices', text: 'You start remote. Open an office when your revenue supports it or once you hire admin staff: pick a city, a size in desks, and rent or buy. When an office runs out of desks you choose a bigger space, buying a building, or another office.' },
     { tab: 'more', at: '#techpanel', title: 'Technology and CPE', text: 'Better software lets everyone handle more clients, for a monthly cost per person and a short learning curve after you switch. Below it, CPE: licensed staff need yearly training hours. Skipping saves time and money but can cost them their licenses.' },
