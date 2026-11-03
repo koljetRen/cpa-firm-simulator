@@ -174,6 +174,7 @@ label.opt input{margin-top:2px;width:22px;height:22px;accent-color:var(--accent)
 .deal{border:1px solid var(--rule);border-left:4px solid var(--rule);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px}
 .deal.green{border-left-color:var(--pos)} .deal.yellow{border-left-color:var(--warn)} .deal.red{border-left-color:var(--neg)} .deal.sold{opacity:.6}
 table.rk tbody th{position:static}
+table.rk{width:100%}table.rk thead th:nth-child(2),table.rk thead th:last-child{text-align:left}
 table.rk td.nm{text-align:left;font-family:var(--f-body);white-space:normal;min-width:11rem}
 table.rk td.nm small{display:block;color:var(--muted);font-size:.75rem}
 table.rk tr.you th,table.rk tr.you td{background:var(--accent-soft)}
@@ -182,6 +183,20 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
 .mlog{list-style:none;margin:0;padding:0;font-size:.9rem;display:flex;flex-direction:column;gap:6px}
 .tm{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:8px 0;border-bottom:1px solid var(--rule);font-size:.92rem}
 .tm .num{grid-column:1/-1;color:var(--muted);font-size:.82rem}
+.stickybar{position:fixed;z-index:7;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));max-width:848px;margin:0 auto;display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--sheet);border:1.5px solid var(--accent);border-radius:var(--r);padding:10px 12px;box-shadow:0 6px 22px rgba(0,0,0,.18)}
+.stickybar>div{display:flex;flex-direction:column;min-width:0}.stickybar span{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stickybar .btn{min-height:44px;padding:6px 14px}
+main:has(.stickybar){padding-bottom:230px}
+@media (max-width:420px){.stickybar{grid-template-columns:1fr 1fr}.stickybar>div{grid-column:1/-1}}
+#tutask{position:fixed;inset:0;z-index:21;display:flex;align-items:flex-end;justify-content:center}
+#tut{position:fixed;z-index:8;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;max-height:46vh;overflow-y:auto;background:var(--band);color:var(--band-ink);border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px}
+#tut h3{font-size:1.25rem}#tut p{margin:0;font-size:.95rem}
+#tut .tut-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}#tut .tut-top span{font-size:.75rem;opacity:.8;white-space:nowrap}
+#tut .tut-b{display:flex;gap:8px;flex-wrap:wrap}#tut .btn{min-height:44px;flex:1;border-color:var(--band-ink);color:var(--band-ink)}#tut .btn.primary{background:var(--band-ink);color:var(--band)}#tut .btn:disabled{opacity:.5}
+#tut .tut-wait{font-weight:700;color:#ffd58a}
+.tut-hi{outline:3px solid #f0b35a;outline-offset:3px;border-radius:10px;position:relative;z-index:3}
+@media (min-width:760px){#tutask{align-items:center}}
+@media (min-width:1100px){#tut{bottom:16px;left:112px}}
 @media (min-width:760px){
   .kpis{grid-template-columns:2fr 1fr 1fr 1fr} .kpi.lead{grid-column:auto}
   .gauges{grid-template-columns:1fr 1fr}
@@ -190,6 +205,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
 @media (min-width:1100px){
   #tabs{top:0;bottom:0;right:auto;width:96px;grid-template-columns:1fr;grid-auto-rows:72px;align-content:start;padding-top:calc(80px + env(safe-area-inset-top,0px));border-top:0;border-right:1px solid var(--rule)}
   main{padding-bottom:40px}
+  .stickybar{bottom:16px;left:112px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -197,6 +213,8 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
 <main id="app" aria-live="polite"></main>
 <nav id="tabs" aria-label="Screens"></nav>
 <div id="sheet" hidden></div>
+<div id="tutask" hidden></div>
+<div id="tut" hidden role="dialog" aria-label="Tutorial"></div>
 <script>(function(G){(G.CPA=G.CPA||{}).IPA2026=[["Deloitte",35687000000,"New York"],["PwC",25574000000,"New York"],["Ernst & Young LLP",24741000000,"New York"],["KPMG",15900000000,"New York"],["RSM US LLP",4199405000,"Chicago"],["Baker Tilly",3667100000,"Chicago"],["BDO USA",3018000000,"Chicago"],["CBIZ & CBIZ CPAs PC",2810000000,"New York"],["Grant Thornton",2457089000,"Chicago"],["Forvis Mazars LLP",2318854000,"Springfield, Mo."],["CLA",2103000000,"Minneapolis"],["Crowe LLP",1391301000,"Chicago"],["Plante Moran",1295889000,"Southfield, Mich."],["Eisner Advisory Group LLC",1235173980,"New York"],["CohnReznick Advisory LLC",1119024063,"Parsippany, N.J."],["Citrin Cooperman",985000000,"New York"],["Andersen",838692000,"San Francisco"],["Eide Bailly",835388000,"Fargo, N.D."],["Cherry Bekaert",812000000,"Raleigh, N.C."],["WithumSmith+Brown PC",764962000,"Princeton, N.J."],["Armanino Advisory LLC",699739502,"San Ramon, Calif."],["Aprio Advisory Group LLC",681340032,"Atlanta"],["Wipfli LLP",637800000,"Milwaukee"],["Carr Riggs & Ingram",583808454,"Enterprise, Ala."],["Sikich",529524707,"Chicago"],["PKF O\u2019Connor Davies",458000000,"Harrison, N.Y."],["UHY",412900000,"Farmington Hills, Mich."],["Weaver",404882661,"Houston"],["Holthouse Carlin & Van Trigt LLP",291728601,"Los Angeles"],["Kearney & Company PC",290099743,"Alexandria, Va."],["RubinBrown LLP",265188000,"St. Louis"],["BPM LLP",255192000,"San Francisco"],["Novogradac & Company LLP",254664752,"San Francisco"],["Whitley Penn",254265383,"Fort Worth, Texas"],["LBMC PC",240793216,"Brentwood, Tenn."],["Doeren Mayhew",240080000,"Troy, Mich."],["Frank Rimerman + Co. LLP",238438732,"San Jose, Calif."],["Rehmann LLC",236066134,"Troy, Mich."],["Cohen & Co",219352787,"Cleveland"],["Katz Sapper & Miller",215262184,"Indianapolis"],["Elliott Davis",212000000,"Greenville, S.C."],["BerryDunn",200712978,"Portland, Maine"],["Frazier & Deeter Advisory LLC",198476000,"Atlanta"],["Schellman",197299236,"Tampa, Fla."],["Bonadio & Co. LLP",195229651,"Pittsford, N.Y."],["Sorren",193296588,"Meridian, Idaho"],["Richey May Advisory LLC",190104383,"Englewood, Colo."],["Hill Barth & King LLC",185185000,"Canfield, Ohio"],["Warren Averett",174367367,"Birmingham, Ala."],["Kaufman Rossin",174000000,"Miami"],["Miller Cooper & Co. Ltd.",167457000,"Chicago"],["Grassi Advisory Group Inc.",160373550,"New York"],["Anchin Block & Anchin LLP",158390000,"New York"],["Mauldin & Jenkins LLC",158106017,"Atlanta"],["Pinion LLC",157843052,"Salina, Kan."],["Springline Advisory",153909000,"Dallas"],["Blue & Co. LLC",153421161,"Carmel, Ind."],["RKL LLP",148233090,"Lancaster, Pa."],["Sax LLP",138000000,"Parsippany, N.J."],["Schneider Downs & Co. Inc.",137178100,"Pittsburgh"],["Prager Metis",133702000,"New York"],["SC&H",126000000,"Hunt Valley, Md."],["Bennett Thrasher LLP",125028376,"Atlanta"],["Smith + Howard",114855000,"Atlanta"],["SingerLewak LLP",111801078,"Los Angeles"],["Dean Dorton Allen Ford PLLC",108686006,"Lexington, Ky."],["H&CO",108091681,"Miami"],["Clark Schaefer Hackett & Co.",106548574,"Miamisburg, Ohio"],["Wolf & Company PC",105280000,"Boston"],["Aldrich",103317052,"Lake Oswego, Ore."],["Lutz",96642124,"Omaha, Neb."],["Archer Lewis",96000000,"Chicago"],["Brown Edwards & Company LLP",95992232,"Roanoke, Va."],["Anders",95805940,"St. Louis"],["PBMares LLP",94029479,"Newport News, Va."],["Sensiba LLP",92896429,"San Jose, Calif."],["Rea",88324613,"New Philadelphia, Ohio"],["HoganTaylor LLP",86404364,"Tulsa, Okla."],["HHM CPAs",85958632,"Chattanooga, Tenn."],["Cain Watters & Associates LLC",85786648,"Frisco, Texas"],["KLR",85499574,"Providence, R.I."],["BMSS LLC",83231784,"Birmingham, Ala."],["PYA",82502145,"Knoxville, Tenn."],["Gursey Schneider LLP",81215705,"Los Angeles"],["Brady Martz",79932000,"Grand Forks, N.D."],["Clark Nuber PS",79842028,"Bellevue, Wash."],["GBQ Partners LLC",78187086,"Columbus, Ohio"],["Miller Kaplan",75000000,"Burbank, Calif."],["Nichols Cauley",74972791,"Dublin, Ga."],["Prosperity Partners",73078000,"Chicago"],["AAFCPAs Inc.",72900000,"Westborough, Mass."],["Wiss & Company LLP",72000000,"Florham Park, N.J."],["Boulay PLLP",71546800,"Eden Prairie, Minn."],["Haynie & Company",70900640,"Salt Lake City"],["GHJ",70303000,"Los Angeles"],["Baker Newman Noyes",70119441,"Portland, Maine"],["REDW LLC",69792583,"Albuquerque, N.M."],["Kemper CPA Group LLP",69257857,"Evansville, Ind."],["YHB | CPAs & Consultants",69146914,"Winchester, Va."],["Global Tax Management Inc.",67736406,"Wayne, Pa."],["Tanner LLP",64580642,"Salt Lake City"],["Honkamp PC",64314108,"Dubuque, Iowa"],["AdamsBrown LLC",58630070,"Wichita, Kan."],["LMC Advisors LLC",57381763,"New York"],["GRF CPAs & Advisors",57068652,"Bethesda, Md."],["Windes",56471206,"Long Beach, Calif."],["Johnson Lambert LLP",55905893,"Raleigh, N.C."],["Meaden & Moore LLP",55760763,"Cleveland"],["ATA",55062359,"Jackson, Tenn."],["Yeo & Yeo PC",54700522,"Saginaw, Mich."],["James Moore & Co. PL",53598374,"Gainesville, Fla."],["Redpath and Company LLC",52594000,"St. Paul, Minn."],["Reid Accountants + Advisors",52516300,"Woodbury, N.Y."],["Roth and Company LLP",52047153,"Brooklyn, N.Y."],["Maxwell Locke & Ritter LLP",51930989,"Austin, Texas"],["Maner Costerisan PC",50969221,"Lansing, Mich."],["Abdo LLP",50832772,"Edina, Minn."],["Porte Brown LLC",50431319,"Elk Grove Village, Ill."],["Hutchinson & Bloodgood LLP",48976467,"Glendale, Calif."],["Centri",48850000,"Philadelphia"],["Barnes Dennig",48718789,"Cincinnati"],["Squire & Co. PC",48691811,"Orem, Utah"],["Windham Brannon LLC",48593753,"Atlanta"],["SVA Certified Public Accountants SC",48353966,"Madison, Wis."],["TJT",47628585,"Raleigh, N.C."],["Moore Colson",47177860,"Atlanta"],["Gray Gray & Gray LLP",47134582,"Canton, Mass."],["GreerWalker LLP",46810777,"Charlotte, N.C."],["Mowery & Schoenfeld LLC",46496094,"Lincolnshire, Ill."],["KSDT",46400000,"Miami"],["Topel Forman LLC",46375089,"Chicago"],["Keiter",45928074,"Glen Allen, Va."],["Calibre CPA Group PLLC",45652000,"Bethesda, Md."],["BeachFleischman PLLC",45384109,"Tucson, Ariz."],["KerberRose",45267290,"Green Bay, Wis."],["Walter Shuffain",44200000,"Boston"],["Saville CPAs & Advisors LLC",43960667,"Dallas"],["Aline Accounting Partners",43422000,"Tampa, Fla."],["Duffy Kruspodin LLP",42115279,"Woodland Hills, Calif."],["Jackson Thornton",41413276,"Montgomery, Ala."],["WilkinGuttenplan",40791565,"East Brunswick, N.J."],["Frost PLLC",40198749,"Little Rock, Ark."],["MMB+CO",40135126,"Fairport, N.Y."],["Wegner CPAs LLP",40038165,"Madison, Wis."],["Opsahl Dawson & Company Advisors LLC",39988516,"Vancouver, Wash."],["DMJPS PLLC",39811562,"Greensboro, N.C."],["Whittlesey PC",39633693,"Hartford, Conn."],["Lauterbach & Amen LLP",39539832,"Naperville, Ill."],["Stambaugh Ness",39412757,"York, Pa."],["ATLAS Navigators LLC",39409000,"Colorado Springs, Colo."],["Geffen Mesher",39369808,"Portland, Ore."],["Hawkins Ash CPAs",39315000,"La Crosse, Wis."],["KEB",38462834,"Springfield, Ill."],["Larson Gross",38292625,"Bellingham, Wash."],["Sweeney Conrad",37200763,"Kirkland, Wash."],["BRC Bernard Robinson & Company LLP",37120188,"Greensboro, N.C."],["ATKG Advisors",35583628,"San Antonio"],["thf",35511645,"Tallahassee, Fla."],["Perelson Weiner",35238511,"New York"],["JTaylor",34956923,"Fort Worth, Texas"],["Abbott Stringham & Lynch",34923848,"Campbell, Calif."],["abip",34787814,"Houston"],["SEK CPAs & Advisors",34484893,"Hagerstown, Md."],["Lumsden & McCormick LLP",34282557,"Buffalo, N.Y."],["Bowers",33988082,"Syracuse, N.Y."],["Redwitz",33277365,"Irvine, Calif."],["MaloneBailey LLP",33080293,"Houston"],["Gross Mendelsohn & Associates PA",32841256,"Baltimore"],["McNair McLemore Middlebrooks & Co. LLC",32799792,"Macon, Ga."],["PP&Co",32781000,"San Jose, Calif."],["Smolin Lupin & Co. LLC",32514700,"Parsippany, N.J."],["Pease Bell CPAs LLC",32380110,"Cleveland"],["Heard McElroy & Vestal LLC",31786988,"Shreveport, La."],["Maloney + Novotny LLC",31670883,"Cleveland"],["Brady Ware & Company",31626040,"Miamisburg, Ohio"],["Bober Markey Fedorovich & Company",31580595,"Akron, Ohio"],["Hungerford CPAs + Advisors",30785393,"Grand Rapids, Mich."],["Trout CPA",30768687,"Lancaster, Pa."],["Lane Gorman Trubitt LLC",30560061,"Dallas"],["Brixey & Meyer Inc.",30413724,"Miamisburg, Ohio"],["Saltmarsh",29296909,"Pensacola, Fla."],["Haskell & White LLP",29154772,"Irvine, Calif."],["EEPB",29008149,"Houston"],["Harding Shymanski & Company PSC",28877472,"Evansville, Ind."],["Allen Gibbs & Houlik LC",28408101,"Wichita, Kan."],["LSL LLP",28273552,"Irvine, Calif."],["Boyer & Ritter LLC",28238318,"Camp Hill, Pa."],["Ketel Thorstenson",28202409,"Rapid City, S.D."],["Ellin & Tucker",28156001,"Baltimore"],["Hannis T. Bourgeois LLP",27981922,"Baton Rouge, La."],["BGM",27890446,"Bloomington, Minn."],["JRBT PC",27745090,"Waco, Texas"],["Kruggel Lawton & Co. LLC",27539345,"South Bend, Ind."],["Chiampou Travis Besaw & Kershner LLP",27524848,"Amherst, N.Y."],["DMLO",27411234,"Louisville, Ky."],["Friedman + Huey Associates LLP",27260445,"Frankfort, Ill."],["Brown Plus",27163049,"Camp Hill, Pa."],["Stephano Slack LLC",27000000,"Wayne, Pa."],["Williams-Keepers LLC",26849259,"Columbia, Mo."],["Darnall Sikes & Frederick",26706397,"Lafayette, La."],["Kerkering Barberio & Co.",26636914,"Sarasota, Fla."],["Maillie LLP",26562542,"Limerick, Pa."],["Haga Kommer LTD",26524739,"Fargo, N.D."],["William Vaughan Company",26448934,"Maumee, Ohio"],["KWC CPAs",26389881,"Alexandria, Va."],["RSM Puerto Rico",26349391,"San Juan"],["Templeton Advisors",26145000,"West Palm Beach, Fla."],["KNAV Advisory Inc.",25952183,"Atlanta"],["Draffin Tucker",25914432,"Albany, Ga."],["MBE CPAs",25781200,"Baraboo, Wis."],["Olsen Thielen & Co. Ltd.",25624804,"Roseville, Minn."],["Kassouf & Co Inc",25551518,"Birmingham, Ala."],["Abitos Accountants + Advisors",25496509,"Coral Gables, Fla."],["Lavine Lofgren Morris & Engelberg LLP",25306107,"La Jolla, Calif."],["McConnell & Jones LLP",25273292,"Houston"],["CCK Strategies PLLC",25239820,"Tulsa, Okla."],["Insero Advisors LLC",25179566,"Rochester, N.Y."],["Jones & Roth PC",25119566,"Eugene, Ore."],["Boyum Barenscheer",25003304,"Minneapolis"],["McKonly & Asbury LLP",24747574,"Camp Hill, Pa."],["Hood & Strong LLP",24561130,"San Francisco"],["Henry & Peters PC",24456156,"Tyler, Texas"],["Bowman & Company LLP",24350374,"Stockton, Calif."],["Teal Becker & Chiaramonte CPAs PC",24183965,"Albany, N.Y."],["Symphona LLP",24001088,"Savannah, Ga."],["KPM CPAs & Advisors",23998879,"Springfield, Mo."],["Andrews Hooper Pavlik",23961120,"Saginaw, Mich."],["DGPerry CPAs + Advisors",23935854,"Naples, Fla."],["Councilor Buchanan & Mitchell PC",23900000,"Bethesda, Md."],["Realize CPA LLP",23804616,"San Francisco"],["CDH CPA PLLC",23580786,"Itasca, Ill."],["Wilson Lewis",23537781,"Duluth, Ga."],["Fasten Halberstam LLP",23527327,"New York"],["Reese Henry",23476803,"Aspen, Colo."],["Suttle & Stalnaker PLLC",23437925,"Charleston, W.Va."],["Fiondella Milone & LaSaracina LLP | FMLCPAS",23068869,"Glastonbury, Conn."],["Blackburn Childers & Steagall PLC",22934546,"Johnson City, Tenn."],["Johnson O\u2019Connor Feron & Carucci LLP",22841409,"Wakefield, Mass."],["TKR Advisors LLC",22837047,"Arlington, Va."],["Kernutt Stokes LLP",22605707,"Eugene, Ore."],["Cooper Norman",22476818,"Idaho Falls, Idaho"],["Global Tax Network US LLC",22466399,"Maple Grove, Minn."],["Seidel Schroeder",22269449,"Brenham, Texas"],["DHJJ LTD",22237727,"Naperville, Ill."],["BST & Co CPAs LLP",22038537,"Latham, N.Y."],["Junkermier Clark Campanella Stevens PC",21995000,"Great Falls, Mont."],["Larson & Company PC",21902226,"South Jordan, Utah"],["Kolder Slaven & Company LLC",21647070,"Lafayette, La."],["Wright Ford Young & Co.",21633756,"Irvine, Calif."],["HBE LLP",21329418,"Lincoln, Neb."],["DWC CPAs and Advisors",21262935,"Grand Junction, Colo."],["415 Group Inc",20900862,"Canton, Ohio"],["BFBA LLP",20679000,"Sacramento, Calif."],["S.R. Snodgrass PC",20630007,"Cranberry Township, Pa."],["H&S Companies",20525483,"Fremont, Mich."],["Leonard Mulherin & Greene PC / eCratchit Inc.",20502286,"Braintree, Mass."],["Bartlett Pringle & Wolf LLP",20400000,"Santa Barbara, Calif."],["Bland & Associates PC",20340808,"Omaha, Neb."],["Glenn Burdette",20247307,"San Luis Obispo, Calif."],["Frazer LLP",20237087,"Anaheim, Calif."],["TSS Advisors LLC",20206349,"Lebanon, N.H."],["Reynolds Bone & Griesbeck PLC",20179705,"Memphis, Tenn."],["Frankel LLC",20063204,"Omaha, Neb."],["Belfint Lyons & Shuman PA",19816353,"Wilmington, Del."],["CST Group CPAs PC",19698902,"Reston, Va."],["Gallagher Flynn & Company LLP",19670209,"South Burlington, Vt."],["Robinson Grimes & Company PC",19661131,"Columbus, Ga."],["Dopkins & Company LLP",19564655,"Williamsville, N.Y."],["ADKF PC",19220292,"San Antonio"],["Lanigan Ryan PC",19219162,"Gaithersburg, Md."],["HLB Gross Collins PC",19211317,"Atlanta"],["Smith Leonard PLLC",19005701,"High Point, N.C."],["Abacus!",18789196,"Springfield, Mo."],["Bolinger Segars Gilbert & Moss LLP",18787474,"Lubbock, Texas"],["Miller Grossbard Advisors LLP",18729513,"Houston"],["McGill Power Bell & Associates LLP",18723000,"Meadville, Pa."],["Barnes Wendling CPAs",18633073,"Cleveland"],["LB Carlson LLP",18451520,"Minneapolis"],["Firley Moran Freer & Eassa CPA PC",18447120,"Syracuse, N.Y."],["Albin Randall & Bennett",18268062,"Portland, Maine"],["KatzAbosch",18194503,"Timonium, Md."],["Corrigan Krause",18032224,"Westlake, Ohio"],["GMP Advisors",17933000,"Tyler, Texas"],["GranthamPoole PLLC",17885773,"Ridgeland, Miss."],["Armstrong Backus & Co. LLP",17853371,"San Angelo, Texas"],["JLK Rosenberger",17745959,"Irvine, Calif."],["Vasquez and Company LLP",17683028,"Glendale, Calif."],["Siegfried Advisory LLC",17662297,"Wilmington, Del."],["Schlenner Wenner & Co.",17490823,"St. Cloud, Minn."],["Sol Schwartz & Associates PC",17386756,"San Antonio"],["Altman Rogers & Co",17384000,"Anchorage, Alaska"],["RRBB",17134317,"Somerset, N.J."],["HCJ CPAs & Advisors PLLC",17127382,"Little Rock, Ark."],["Mahoney",16969648,"St. Paul, Minn."],["PBG Financial Services PLLC",16886158,"Glenview, Ill."],["Wilke CPAs & Advisors LLP",16852350,"Pittsburgh, Pa."],["SFC LLP",16808261,"Arlington, Texas"],["Lucida",16777082,"Brookfield, Wis."],["LerroSarbey PLLC",16746586,"Boca Raton, Fla."],["Condley and Company LLP",16602065,"Abilene, Texas"],["N&K CPAs Inc.",16511131,"Honolulu, Hawaii"],["Cathedral CPAs & Advisors LLP",16380571,"Iselin, N.J."],["JamisonMoneyFarmer PC",16308420,"Tuscaloosa, Ala."],["FustCharles LLP",16272716,"Syracuse, N.Y."],["RJI International CPAs",16248395,"Irvine, Calif."],["LevitZacks",16184814,"San Diego"],["Cg Tax Audit & Advisory",16153379,"Tinton Falls, N.J."],["Grimbleby Coleman Advisors & Accountants",16100482,"Modesto, Calif."],["Cerini & Associates LLP",16062529,"Bohemia, N.Y."],["Brinker Simpson & Company LLC",15987833,"Media, Pa."],["Pugh CPAs",15921517,"Knoxville, Tenn."],["MahoneySabol",15872000,"Glastonbury, Conn."],["Williams & Company CPA PC",15860284,"Spencer, Iowa"],["Nathan Wechsler & Company",15742148,"Concord, N.H."],["Baratz & Associates PA",15620437,"Marlton, N.J."],["De La Hoz Perez & Barbeito PLLC",15610000,"Coral Gables, Fla."],["Casey Peterson Ltd.",15573089,"Rapid City, S.D."],["Vesta",15394815,"Fond du Lac, Wis."],["The Dolins Group Ltd.",15380830,"Northbrook, Ill."],["Christianson PLLP",15257955,"Willmar, Minn."],["Kushner LaGraize LLC",15248177,"Metairie, La."],["Hantzmon Wiebel LLP",15232241,"Charlottesville, Va."],["CKH Consulting LLC",15200000,"Atlanta"],["PAAST PL",15197979,"Coral Gables, Fla."],["Johnson Block and Company Inc.",15060225,"Middleton, Wis."],["Beasley Mitchell & Co. LLP",14963016,"Las Cruces, N.M."],["Welgaard CPAs & Advisors",14926651,"Pella, Iowa"],["Desroches Partners LLP",14924518,"Houston"],["PKS & Company PA",14840000,"Salisbury, Md."],["Dulin Ward & DeWald Inc.",14832374,"Fort Wayne, Ind."],["RMA Associates LLC",14753515,"Arlington, Va."],["Brock and Company CPAs PC",14566000,"Boulder, Colo."],["Fitts Roberts Kolkhorst & Co. PC",14554982,"Houston"],["SFW Partners LLC",14544000,"St. Louis"],["Sheehan & Company CPA PC",14476552,"Brightwaters, N.Y."],["Packer Thomas",14430429,"Canfield, Ohio"],["Thompson Greenspon",14309937,"Fairfax, Va."],["Reynolds + Rowella LLP",14282000,"Ridgefield, Conn."],["Hall CPA PLLC",14180000,"Raleigh, N.C."],["Johanson & Yau Accountancy Corp",14128879,"Campbell, Calif."],["ELO CPAs & Advisors",14113364,"Mitchell, S.D."],["Meyers Brothers Kalicka PC",14032067,"Holyoke, Mass."],["Froehling Anderson",14031696,"Minneapolis"],["MHCS PC",13972789,"West Des Moines, Iowa"],["Louis Plung & Company",13970000,"Pittsburgh"],["WBL CPAs + Advisors",13959488,"Atlanta"],["Holsinger PC",13817000,"Wexford, Pa."],["Machen McChesney LLP",13793801,"Auburn, Ala."],["Haefele Flanagan",13727000,"Maple Shade, N.J."],["MeredithCPAs",13720952,"Irving, Texas"],["Flagel Huber Flagel",13637653,"Dayton, Ohio"],["Baldwin CPAs PLLC",13539939,"Richmond, Ky."],["Dennis Gartland & Niergarth",13539175,"Traverse City, Mich."],["Gilbert CPAs",13281000,"Sacramento, Calif."],["Wilkins Miller LLC",13207717,"Mobile, Ala."],["Atchley & Associates LLP",13089246,"Austin, Texas"],["Bregante + Company LLP",13051591,"Pleasanton, Calif."],["BKC CPAs PC",13012676,"Flemington, N.J."],["M&K CPAs PLLC",12973123,"The Woodlands, Texas"],["Santora CPA Group",12923218,"Newark, Del."],["BGW",12868046,"Charlotte, N.C."],["LattaHarris",12834323,"Cedar Rapids, Iowa"],["Turner Warren Hwang & Conrad AC",12770474,"Burbank, Calif."],["Dermody Burke & Brown CPAs LLC",12755000,"Syracuse, N.Y."],["Moore Beauston & Woodham LLC",12657954,"North Charleston, S.C."],["Bederson LLP",12496780,"Fairfield, N.J."],["Aldridge Borden OneSource",12480000,"Montgomery, Ala."],["TRP Sumner PLLC",12421718,"Fayetteville, N.C."],["Myslajek Kemp & Spencer Ltd.",12327954,"St. Louis Park, Minn."],["Rushton LLC",12316207,"Gainesville, Ga."],["Gordon Advisors PC",12236866,"Troy, Mich."],["Meadows Urquhart",12201000,"Henrico, Va."],["Monroe Shine & Co. Inc.",12185853,"Louisville, Ky."],["Wheeler Accountants LLP",12037011,"San Jose, Calif."],["JHM Certified Public Accountants",12000634,"Chattanooga, Tenn."],["Wallace Plese + Dreher LLP",11927423,"Chandler, Ariz."],["Coulter & Justus PC",11906424,"Knoxville, Tenn."],["Kurtz Fargo LLP",11862276,"Boulder, Colo."],["Schechter Dokken Kanter Andrews & Selcer Ltd.",11715683,"Minneapolis"],["SSC CPAs + Advisors",11710816,"Topeka, Kan."],["Wessel & Company",11626669,"Johnstown, Pa."],["Grobstein Teeple LLP",11616507,"Woodland Hills, Calif."],["Chawla & Chawla PC",11600000,"Gaithersburg, Md."],["CS&L CPAs PA",11446578,"Sarasota, Fla."],["Denman CPA LLP",11445309,"West Des Moines, Iowa"],["Flaherty Salmin LLP",11438889,"Rochester, N.Y."],["DeLeon & Stang CPAs and Advisors",11426434,"Frederick, Md."],["Crosslin PLLC",11357926,"Nashville, Tenn."],["Faulk & Winkler LLC",11326478,"Baton Rouge, La."],["Kirsch CPA Group LLC",11259861,"Hamilton, Ohio"],["Hancock & Dana PC",11258234,"Omaha, Neb."],["Soukup Bush & Associates CPAs PC",11255680,"Fort Collins, Colo."],["CMP Inc",11235623,"Logan, Utah"],["Stokes & Company CPAs PC",11224164,"Greenville, S.C."],["Sansiveri Kimball & Co. LLP",11216743,"Providence, R.I."],["Derderian Kann Seyferth & Salucci PC",11157755,"Troy, Mich."],["Ericksen Krentel LLP",11137156,"New Orleans"],["Ascend Tax & Business Advisors LLP",11063872,"Calabasas, Calif."],["Brock Schechter & Polakoff LLP",11054756,"Buffalo, N.Y."],["Eccezion",10995126,"McHenry, Ill."],["Martin Starnes & Associates CPAs PA",10983392,"Hickory, N.C."],["Daniells Phillips Vaughan & Bock",10865008,"Bakersfield, Calif."],["Atherton & Associates LLP",10686790,"Modesto, Calif."],["Rogers & Company PLLC",10560000,"McLean, Va."],["Rudler PSC",10527023,"Fort Wright, Ky."],["LSWG PA",10478387,"Frederick, Md."],["Donovan CPAs",10406225,"Indianapolis"],["ECS Financial Services, Inc.",10366629,"Northbrook, Ill."],["McMill CPAs & Advisors",10354677,"Norfolk, Neb."],["PKF San Diego LLP",10329483,"San Diego"],["Fenner Melstrom & Dooling PLC",10310305,"Birmingham, Mich."],["MRPR Group PC",10287875,"Southfield, Mich."],["The Pun Group LLP",10274000,"Santa Ana, Calif."],["Gould Killian CPA Group PA",10256562,"Asheville, N.C."],["HKP Advisors",10245482,"Seattle"],["Shultz Huber & Associates Inc.",10219775,"Defiance, Ohio"],["Newburg & Company LLP",10211000,"Waltham, Mass."],["Brown Armstrong Accountancy Corporation",10186102,"Bakersfield, Calif."],["Chortek LLP",10172601,"Waukesha, Wis."],["Rekdal Hopkins Howard PS",9964059,"Bellevue, Wash."],["Ennis Pellum & Associates CPAs",9930594,"Jacksonville, Fla."],["Mellott Advisors LLC",9901598,"Cincinnati"],["Cray Kaiser Ltd.",9866406,"Oakbrook Terrace, Ill."],["Thomas Head & Greisen PC",9858002,"Anchorage, Alaska"],["Whitlock CPAs and Advisors",9844889,"Springfield, Mo."],["Faw Casson & Co. LLP",9820613,"Dover, Del."],["Jones Simkins LLC",9769302,"Logan, Utah"],["Munninghoff Lange & Co.",9764880,"Covington, Ky."],["Daniels & Erickson PC",9754805,"Dallas"],["Walz Group",9749290,"Lancaster, Pa."],["Wathen DeShong & Juncker LLP",9725072,"Beaumont, Texas"],["Grossman St. Amour CPAs PLLC",9723114,"Syracuse, N.Y."],["Kreit & Chiu CPA LLP",9543736,"New York"],["Matthews Cutrer & Lindsay PA",9426833,"Ridgeland, Miss."],["Ryan & Wetmore PC",9400000,"Bethesda, Md."],["Oliver Rainey & Wojtek LLP",9387532,"San Angelo, Texas"],["Hajek & Associates",9333386,"St. Petersburg, Fla."],["Cordell Neher & Company PLLC",9332126,"Wenatchee, Wash."],["Gilliam Bell Moser LLP",9331912,"Burlington, N.C."],["Brickley DeLong PC",9267900,"Muskegon, Mich."],["MarkhamNorton",9201787,"Fort Myers, Fla."],["Bell & Company PA",9185876,"North Little Rock, Ark."],["Burton McCumber & Longoria LLP",9168000,"Brownsville, Texas"],["Allied CPAs PC",9131061,"Rochester, N.Y."],["Greenstein Rogoff Olsen & Co. LLP",9117939,"Fremont, Calif."],["Serotta Maddocks Evans CPAs",9117725,"Augusta, Ga."],["Wells Coleman & Company LLP",9090271,"Richmond, Va."],["Schaffner Knight Minnaugh & Company PC",9055803,"Erie, Pa."],["Anthem Strategists",9040207,"Salem, Ore."],["Payne Nickles & Company",9028416,"Norwalk, Ohio"],["gishSEIDEN",8908553,"Los Angeles"],["Linkenheimer LLP",8880525,"Santa Rosa, Calif."],["Han Group LLC",8850000,"Washington, D.C."],["Mathieson Moyski Austin & Co LLP",8825932,"Lisle, Ill."],["Bland Garvey PC",8814128,"Richardson, Texas"],["Kittell Branagan & Sargent",8645658,"St. Albans, Vt."],["Rich Wightman & Company CPAs LLC",8620000,"Las Vegas"],["DRDA LLC",8594374,"Houston"],["Dugan & Lopatka",8556847,"Warrenville, Ill."],["HarperWhitfield PC",8508202,"Farmington, Conn."],["R&A CPAs",8417874,"Tucson, Ariz."],["The Hechtman Group LLC",8377067,"Skokie, Ill."],["KHA Accountants PLLC",8374873,"Frisco, Texas"],["McCrate DeLaet & Co.",8323979,"Sidney, Ohio"],["CRR LLP",8320000,"Wakefield, Mass."],["Weinlander Fitzhugh PC",8314881,"Bay City, Mich."],["Whalen CPAs",8231001,"Dublin, Ohio"],["AKA Advisory LLC",8192600,"Wilmington, Del."],["GT Reilly & Company",8141013,"Milton, Mass."],["Kentner Sellers CPAs LLC",8117576,"Vandalia, Ohio"],["Byrne Zizzi CPA PLLC",8099414,"Tupelo, Miss."],["Johnson & Sheldon PLLC",8053605,"Amarillo, Texas"],["Vine Dahlen PLLC",8051581,"Lynnwood, Wash."],["Boge Wybenga & Bradley PC",7981930,"Mount Pleasant, Mich."],["Widmer Roel",7857274,"Fargo, N.D."],["Moody & O\u2019Neal CPAs LLC",7852519,"Mount Pleasant, S.C."],["SBDP CPAs & Advisors",7820797,"Jacksonville Beach, Fla."],["Cummings Keegan & Co",7800425,"St. Louis Park, Minn."],["Iannuzzi Manetta & Company PC",7791564,"Troy, Mich."],["GYL LLP",7671318,"Ontario, Calif."],["AM Peisch & Company LLP",7652535,"Colchester, Vt."],["Keegan Linscott & Associates PC",7576351,"Tucson, Ariz."],["C&D LLP",7478883,"Solvang, Calif."],["Metz CPA PLLC",7471316,"Phoenix"],["Mosher Seifert + Co PC",7425000,"The Woodlands, Texas"],["Nail McKinney Professional Association",7255232,"Tupelo, Miss."],["LJB CPA",7002661,"Dallas"],["KRS CPAs LLC",6980213,"Paramus, N.J."],["Menke & Company",6913000,"West Point, Iowa"],["Clements Purvis & Stewart PC",6874522,"Douglas, Ga."],["AFairchild LLC",6777125,"Addison, Texas"],["HSC/Tuscan & Company PA",6769080,"Fort Myers, Fla."],["Barbacane Thornton and Company",6689919,"Wilmington, Del."],["Walters & Associates CPAs",6505722,"Sarasota, Fla."],["Skinner Clouse Group",6415000,"Mesa, Ariz."],["Horty & Horty PA",6411184,"Wilmington, Del."],["Shannon & Associates LLP",6289588,"Kent, Wash."],["Marshall Jones",6199855,"Alpharetta, Ga."],["Veridian Accountants & Advisors",6155289,"Miami"],["Traphagen & Traphagen CPAs LLC",6124123,"Oradell, N.J."]];})(typeof window!=="undefined"?window:globalThis);
 </script>
 <script>/* ===== CPA Firm Simulator v2 — ENGINE (no DOM) =====
@@ -206,8 +224,8 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.8.0'; // phase 8: acquisition overhaul
-  CPA.PHASE = 'phases 1–6: engine, people, offices, market, v1 check, people upgrades, new services, acquisition overhaul';
+  CPA.VERSION = '2.10.0'; // phases 9–10 and the next update (tutorial, IPA 500 tab, multi-launch, acquired staff)
+  CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
   /* ---------- Settings (v1 Assumptions, named; cell refs kept) ---------- */
@@ -374,8 +392,11 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   CPA.outputOf = function (s, p) {
     const role = CPA.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'];
     const cpa = (p.certs || []).includes('CPA'), ea = (p.certs || []).includes('EA'), st = s.settings;
-    return role[3] * (1 + (cpa && ea ? st.bonusBoth : cpa ? st.bonusCPA : ea ? st.bonusEA : 0));
+    const tech = CPA.techFactor ? CPA.techFactor(s) : 1; // phase 9: software tier and learning curve
+    return role[3] * (1 + (cpa && ea ? st.bonusBoth : cpa ? st.bonusCPA : ea ? st.bonusEA : 0)) * tech;
   };
+  // Phase 9: monthly hours a person loses to CPE (0 unless the module is loaded)
+  CPA.hoursOf = (s, p, role) => Math.max(0, (p.hours || role[4]) - (CPA.cpeMonthHours ? CPA.cpeMonthHours(s, p) : 0));
   CPA.launchable = (s) => s.services.filter(x => !x.offered && (x.launch === 'launch' || (x.launch === 'afterAudit' && s.services[9].offered)));
 
   /* ---------- Office cost & crowding (phase 3 fills offices[]) ---------- */
@@ -402,7 +423,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     let payroll = 0, heads = 0, admH = 0, bkH = 0, cliH = 0, adminStaff = 0;
     const people = CPA.activePeople(s, t);
     people.forEach(p => {
-      const hc = p.hc || 1, role = CPA.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'], hrs = p.hours || role[4];
+      const hc = p.hc || 1, role = CPA.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'], hrs = CPA.hoursOf(s, p, role);
       payroll += (p.salary || 0) / 12 * hc; heads += hc;
       if (role[5] === 'Admin') { admH += hrs * hc * role[3]; adminStaff += hc; }
       else if (role[5] === 'None') { /* recruiters and HR: no client or admin work */ }
@@ -573,7 +594,11 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     ],
     cards: {
       info() { },
-      launchOffer(s, card, value) { if (value && value !== 'no') CPA.launchService(s, +value); },
+      launchOffer(s, card, value) {
+        if (!value || value === 'no') return;
+        if (typeof value === 'object') { if (value.v === 'ok') (value.picked || []).forEach(sl => CPA.launchService(s, +sl)); return; }
+        CPA.launchService(s, +value); // older saves: one pick
+      },
     },
   });
 
@@ -597,7 +622,8 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const you = s.people.find(p => p.id === 1); if (you) you.age += 1;
     const extra = CPA.hook('yearEnd', s, y, { busyWorkload }).flat().filter(Boolean);
     CPA.pushCard(s, { type: 'info', kind: 'yearEnd', title: 'Year-end ' + y, data: { y, months: rows.length, revenue: rows.reduce((a, r) => a + r.revenue, 0), profit: rows.reduce((a, r) => a + r.profit, 0), newClients: rows.reduce((a, r) => a + r.newClients, 0), lostClients: rows.reduce((a, r) => a + r.lostClients, 0), busyWorkload, age: you ? you.age : null, extra } });
-    if (CPA.launchable(s).length) CPA.pushCard(s, { type: 'launchOffer', kind: 'launchOffer', title: 'Add a new service?', data: { options: CPA.launchable(s).map(x => x.slot) } });
+    const L = CPA.launchable(s);
+    if (L.length) CPA.pushCard(s, { type: 'launchOffer', kind: 'choice', title: 'Add new services?', data: { lines: ['Tick every service you want to start offering next month, then launch them together. Or wait until next year.'], options: L.map(x => ({ value: String(x.slot), label: x.name, sub: x.scope + ' · $' + Math.round(x.fee).toLocaleString('en-US') + '/yr' + (CPA.serviceGateText && CPA.serviceGateText(s, x) ? ' · ' + CPA.serviceGateText(s, x) : '') })), multi: { max: 99 }, buttons: [{ value: 'ok', label: 'Launch selected', primary: true }, { value: 'no', label: 'Not now' }] } });
   };
 
   /* ---------- Player actions ---------- */
@@ -672,6 +698,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     ['bulkAuto', 'Bulk hiring: hire automatically above', 10, 'B175', 'People', 'n'],
     ['handoffAt', 'Hand-off pop-up at revenue', 10000000, 'B188', 'People', '$'],
     ['directorsHandle', 'Directors handle associates, seniors, interns (1/0)', 0, 'B189', 'People', 'n'],
+    ['dirHireLoad', 'After the hand-off, directors hire interns and make offers only above this department load', 0.75, 'v2', 'People', 'p'],
     ['localShare', 'Share of associates and interns from a nearby school', 0.60, 'B197', 'People', 'p'],
   );
 
@@ -1090,14 +1117,27 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const d = info(p).dept, aug = C.turnOf(s, C.monthOf(s, t).y, 8);
     p.role = roleFor(d, 1); p.startTurn = aug; p.endTurn = null; p.salary = C.marketPay(s, p.role, p.years || 0); p.degree = "Bachelor's"; p.inRoleSince = aug; p.source += '; full-time from ' + mlab(s, aug);
   }
+  // Phase 10: after the hand-off, directors only add people where the work is (they used to offer every
+  // intern rated 3+ a job and fill every intern seat, which over-hired large firms).
+  function deptNeed(s, t, d, target) {
+    const row = C.loadTable(s, t).find(x => x.group === d); if (!row) return 0;
+    return Math.max(0, Math.ceil((row.demand / target - row.capacity) / YR));
+  }
+  function deptLoad(s, t, d) { const row = C.loadTable(s, t).find(x => x.group === d); return row ? row.load : 0; }
   function mayInterns(s, t) {
     const y = C.monthOf(s, t).y;
     const interns = s.people.filter(p => info(p).lvl === 0 && p.endTurn === t);
-    interns.forEach(p => {
-      const sc = clamp(Math.round(s.settings.internScore + R.normal(s)), 1, 5);
-      p.rating = sc; p.ratings = (p.ratings || []).concat('Intern ' + y + ' (' + sc + ')');
-      if (handOff(s)) { if (sc >= 3) { offerIntern(s, p, t); dirLog(s, 'Offered ' + p.name + ' (intern, ' + sc + ') a full-time job.'); } else { p.team = null; dirLog(s, 'Let ' + p.name + ' (intern, ' + sc + ') finish without an offer.'); } }
-      else C.pushCard(s, { type: 'internOffer', kind: 'choice', title: 'End of the internship', data: { id: p.id, t, lines: [p.name + ' · ' + p.role + ' · scored ' + sc + ' of 5', p.school ? p.school : '', 'Offer a full-time job as ' + roleFor(info(p).dept, 1) + ' starting ' + mlab(s, C.turnOf(s, y, 8)) + ' at ' + fmt$(C.marketPay(s, roleFor(info(p).dept, 1), 0)) + '?'].filter(Boolean), buttons: [{ value: 'yes', label: 'Offer the job', primary: true }, { value: 'no', label: 'No offer' }] } });
+    interns.forEach(p => { const sc = clamp(Math.round(s.settings.internScore + R.normal(s)), 1, 5); p.rating = sc; p.ratings = (p.ratings || []).concat('Intern ' + y + ' (' + sc + ')'); });
+    const need = {};
+    if (handOff(s)) interns.slice().sort((a, b) => b.rating - a.rating).forEach(p => {
+      const d = info(p).dept, sc = p.rating;
+      if (need[d] == null) need[d] = deptLoad(s, t, d) >= +s.settings.dirHireLoad ? deptNeed(s, t, d, 0.7) : 0;
+      if (sc === 5 || (sc >= 3 && need[d] > 0)) { need[d]--; offerIntern(s, p, t); dirLog(s, 'Offered ' + p.name + ' (intern, ' + sc + ') a full-time job.'); }
+      else { p.team = null; dirLog(s, 'Let ' + p.name + ' (intern, ' + sc + ') finish without an offer' + (sc >= 3 ? ' (no open work in ' + d + ')' : '') + '.'); }
+    });
+    if (!handOff(s)) interns.forEach(p => {
+      const sc = p.rating;
+      C.pushCard(s, { type: 'internOffer', kind: 'choice', title: 'End of the internship', data: { id: p.id, t, lines: [p.name + ' · ' + p.role + ' · scored ' + sc + ' of 5', p.school ? p.school : '', 'Offer a full-time job as ' + roleFor(info(p).dept, 1) + ' starting ' + mlab(s, C.turnOf(s, y, 8)) + ' at ' + fmt$(C.marketPay(s, roleFor(info(p).dept, 1), 0)) + '?'].filter(Boolean), buttons: [{ value: 'yes', label: 'Offer the job', primary: true }, { value: 'no', label: 'No offer' }] } });
     });
   }
   function mayReviews(s, t) {
@@ -1177,7 +1217,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const roles = DEPTS.map(d => d + ' Intern').filter(r => C.roleUseful(s, r));
     const seats = roles.reduce((a, r) => a + C.openSpots(s, r, t), 0);
     if (handOff(s)) {
-      roles.forEach(r => { const n = C.openSpots(s, r, t); if (n > 0) { const h = C.autoHire(s, r, n); dirLog(s, 'Hired ' + h.length + ' ' + r + 's for busy season.'); } });
+      roles.forEach(r => { const d = RI[r].dept; if (deptLoad(s, t, d) < +s.settings.dirHireLoad) return; const n = Math.min(C.openSpots(s, r, t), Math.max(1, deptNeed(s, t, d, 0.7) * 2)); if (n > 0) { const h = C.autoHire(s, r, n); dirLog(s, 'Hired ' + h.length + ' ' + r + 's for busy season.'); } });
       const lt = C.loadTable(s, t);
       DEPTS.forEach(d => { const row = lt.find(x => x.group === d), r = roleFor(d, 2); if (!row || row.load <= 0.8 || !C.roleUseful(s, r)) return; const n = Math.min(C.openSpots(s, r, t), Math.max(0, Math.ceil((row.demand / 0.8 - row.capacity) / (YR * 1.2)))); if (n > 0) { const h = C.autoHire(s, r, n); dirLog(s, 'Hired ' + h.length + ' outside ' + r + (h.length > 1 ? 's' : '') + '.'); } });
       return;
@@ -1248,7 +1288,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   const pct = (v, d = 0) => (v * 100).toFixed(d) + '%';
   const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
 
-  let S = null, tab = 'home', busy = false, confirmNew = false, launchAsk = null, notice = '';
+  let S = null, tab = 'home', busy = false, confirmNew = false, launchPick = [], notice = '';
 
   /* ---------- storage ---------- */
   // Saves go to this device right away and to your claude.ai account a moment later (survives closing
@@ -1297,14 +1337,14 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const el = document.getElementById('cloudstate'); if (el) el.textContent = cloudLabel();
   }
   function load() { try { const t = localStorage.getItem(KEY); return t ? C.deserialize(t) : null; } catch (e) { return null; } }
-  try { const t = localStorage.getItem('cpaFirmSim.v2.tab'); if (t) tab = t; } catch (e) { }
+  try { const t = localStorage.getItem('cpaFirmSim.v2.tab'); if (t) tab = t === 'log' ? 'ranks' : t; } catch (e) { } // the Turn Log tab became the IPA 500 tab
 
   /* ---------- tabs ---------- */
   const UI = window.CPA_UI = { tabs: [], cardViews: {}, state: () => S };
   UI.tabs.push(
     { id: 'home', label: 'Firm', icon: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z', render: renderHome },
     { id: 'clients', label: 'Clients', icon: 'M16 11a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0M12 3v4', render: renderClients },
-    { id: 'log', label: 'Turn log', icon: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5', render: renderLog },
+    { id: 'ranks', label: 'IPA 500', icon: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4', render: () => UI.rankPanel ? UI.rankPanel() : '' },
     { id: 'more', label: 'Growth', icon: 'M4 19l5-6 4 3 7-9M15 7h5v5', render: renderMore },
     { id: 'settings', label: 'Settings', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 12h2M18 12h2M12 2v2M12 20v2', render: renderSettings },
   );
@@ -1319,9 +1359,22 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   function newGame() {
     const name = ($('#ng-name') || {}).value || S && S.meta.firmName;
     const seed = ($('#ng-seed') || {}).value;
-    S = C.newGame({ firmName: name, seed }); confirmNew = false; tab = 'home'; notice = 'New game ready (seed ' + S.meta.seed + ').';
-    save(); render();
+    confirmNew = false;
+    const plain = () => startGame({ firmName: name, seed });
+    if (UI.askTutorial) UI.askTutorial(() => startGame({ tutorial: true }), plain); else plain();
   }
+  // Tutorial games start from a preset firm: the default name, a fixed seed and $500 of marketing.
+  function startGame(o) {
+    S = o.tutorial ? C.newGame({ firmName: 'BlueJaye Financials LLC', seed: 2026 }) : C.newGame(o);
+    if (o.tutorial) { S.decisions.marketing = 500; S.meta.tutorial = 0; }
+    tab = 'home'; notice = o.tutorial ? '' : 'New game ready (seed ' + S.meta.seed + ').';
+    save(); render(); window.scrollTo(0, 0);
+  }
+  UI.startGame = startGame;
+  UI.setTab = (id) => { tab = id; launchPick = []; try { localStorage.setItem('cpaFirmSim.v2.tab', tab); } catch (e) { } render(); };
+  UI.tab = () => tab;
+  UI.save = () => save();
+  UI.render = () => render();
 
   /* ---------- shell ---------- */
   function render() {
@@ -1336,6 +1389,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     $('#tabs').innerHTML = UI.tabs.map(x => `<button class="tab${x.id === T.id ? ' on' : ''}" data-tab="${x.id}" aria-label="${x.label}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${x.icon}"/></svg><span>${x.label}</span></button>`).join('');
     renderCard();
     bind();
+    if (UI.afterRender) UI.afterRender();
   }
 
   /* ---------- dashboard ---------- */
@@ -1350,7 +1404,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const d = S.decisions;
     return `
     <section class="kpis">
-      <div class="kpi lead"><span class="lbl">Cash on hand</span><b class="num big ${cash < 0 ? 'neg' : ''}">${money(cash)}</b><span class="hint">${cash < 0 ? 'Out of cash: cut costs or raise prices.' : 'Starting cash ' + money(S.settings.startingCash)}</span></div>
+      <div class="kpi lead"><span class="lbl">Cash on hand</span><b class="num big ${cash < 0 ? 'neg' : ''}">${money(cash)}</b><span class="hint">${cash < 0 ? 'Out of cash: you pay ' + money(C.overdraftInterest ? C.overdraftInterest(S) : 0) + ' a month in interest (' + pct(S.settings.overdraftRate || 0) + ' a year) until it\'s paid back.' : 'Starting cash ' + money(S.settings.startingCash)}</span></div>
       <div class="kpi"><span class="lbl">Profit 12 mo</span><b class="num ${p12 < 0 ? 'neg' : ''}">${money(p12, true)}</b><span class="hint">Last mo ${last ? money(last.profit, true) : '—'}</span></div>
       <div class="kpi"><span class="lbl">Revenue 12 mo</span><b class="num">${money(r12, true)}</b><span class="hint">YTD ${money(C.revYTD(S), true)}</span></div>
       <div class="kpi"><span class="lbl">IPA 500 rank</span><b class="num">${rank === '500+' ? '500+' : '#' + rank}</b><span class="hint">#500 earns ${money(min500, true)}</span></div>
@@ -1408,28 +1462,21 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
       const on = x.offered, rev = C.svcRevT12(S, i);
       let status;
       if (on) status = x.fromTurn > C.played(S) ? `<span class="pill soon">Starts ${C.monthLabel(S, x.fromTurn)}</span>` : `<span class="pill on">Offered</span>`;
-      else if (launchable.includes(x)) status = `<button class="chip act" data-launch="${x.slot}">Launch</button>`;
+      else if (launchable.includes(x)) status = launchPick.includes(x.slot) ? `<button class="chip on" data-launch="${x.slot}" aria-pressed="true">✓ Selected</button>` : `<button class="chip act" data-launch="${x.slot}" aria-pressed="false">Select to launch</button>`;
       else if (C.serviceGateText && x.launch === 'launch' && C.serviceGateText(S, x)) status = `<span class="pill lock">${esc(C.serviceGateText(S, x))}</span>`;
       else if (x.launch === 'afterAudit') status = `<span class="pill lock">After Audit &amp; Assurance</span>`;
       else status = `<span class="pill lock">Comes with a bought firm</span>`;
       return `<li class="svc${on ? '' : ' off'}"><div class="svc-h"><div class="svc-n"><b>${esc(x.name)}</b><span>${esc(x.type)} · ${esc(x.group)} · ${x.hpc} hrs/client/yr</span>${on && C.serviceGateText && C.serviceGateText(S, x) ? `<span class="warnline small">${esc(C.serviceGateText(S, x))}</span>` : ''}</div>${status}</div>
         <div class="svc-f"><span><em>Clients</em><b class="num">${x.clients}</b></span><span><em>Fee / yr</em><b class="num">${money(x.fee * (1 + price))}</b></span><span><em>Rev 12 mo</em><b class="num">${money(rev, true)}</b></span><span><em>Share</em><b class="num">${r12 > 0 ? pct(rev / r12) : '—'}</b></span></div></li>`;
     }).join('');
-    const ask = launchAsk && S.services.find(x => x.slot === launchAsk);
+    launchPick = launchPick.filter(sl => launchable.some(x => x.slot === sl));
+    const picks = launchPick.map(sl => S.services.find(x => x.slot === sl));
     return `<section class="panel"><h2>Clients and services</h2>
       <div class="facts"><span><b class="num">${C.totalClients(S)}</b> clients</span><span>Revenue 12 mo <b class="num">${money(r12, true)}</b></span><span>YTD <b class="num">${money(C.revYTD(S), true)}</b></span></div>
       <p class="muted small">Fees shown at your price change (${price > 0 ? '+' : ''}${pct(price)}). Project services count engagements won in the last 12 months.</p></section>
-      ${ask ? `<section class="panel confirm"><h2>Launch ${esc(ask.name)} starting ${C.monthLabel(S, t)}?</h2><p>${esc(ask.scope)}. Average fee ${money(ask.fee)} a year. Marketing is then spread across it by its weight.</p><div class="play"><button class="btn primary" data-launchyes="${ask.slot}">Launch</button><button class="btn" data-launchno="1">Cancel</button></div></section>` : ''}
-      <ul class="svcs">${rows}</ul>`;
-  }
-
-  /* ---------- turn log ---------- */
-  function renderLog() {
-    const L = S.history.log.slice().reverse();
-    if (!L.length) return `<section class="panel"><h2>Turn log</h2><p class="muted">One row per month played appears here.</p></section>`;
-    const head = ['Month', 'Mktg', 'Price', 'Growth', 'Event', 'Staff', 'Cap.', 'Workload', 'New', 'Lost', 'Clients', 'Revenue', 'Op. exp.', 'Acq. pay', 'Profit', 'Rev 12 mo', 'Profit 12 mo', 'Cash'];
-    const body = L.map(r => `<tr><th>${esc(r.label)}</th><td>${money(r.marketing)}</td><td>${pct(r.price)}</td><td>${r.growthRoll} · ×${r.leadMult}</td><td class="ev">${r.eventRoll} · ${esc(r.event)}</td><td>${r.staff}</td><td>${pct(r.capacityUsed)}</td><td class="${r.workload > 1 ? 'neg' : ''}">${pct(r.workload)}</td><td>${r.newClients}</td><td>${r.lostClients}</td><td>${r.totalClients}</td><td>${money(r.revenue)}</td><td>${money(r.opEx)}</td><td>${money(r.acqPay)}</td><td class="${r.profit < 0 ? 'neg' : ''}">${money(r.profit)}</td><td>${money(r.revT12)}</td><td>${money(r.profitT12)}</td><td class="${r.cash < 0 ? 'neg' : ''}">${money(r.cash)}</td></tr>`).join('');
-    return `<section class="panel"><h2>Turn log <span class="muted small">${L.length} months, newest first</span></h2><div class="tablewrap"><table class="log"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></section>`;
+      ${launchable.length ? `<p class="muted small">Tap <b>Select to launch</b> on as many services as you like, then launch them together from the bar at the bottom.</p>` : ''}
+      <ul class="svcs">${rows}</ul>
+      ${picks.length ? `<div class="stickybar" role="region" aria-label="Launch selected services"><div><b>Launch ${picks.length} service${picks.length > 1 ? 's' : ''} from ${C.monthLabel(S, t)}</b><span>${esc(picks.map(x => x.short).join(', '))} · ${money(picks.reduce((a, x) => a + x.fee, 0))}/yr in list fees per client</span></div><button class="btn primary" data-launchyes="1">Launch</button><button class="btn" data-launchno="1">Clear</button></div>` : ''}`;
   }
 
   /* ---------- growth: placeholders for later phases + rankings preview ---------- */
@@ -1443,7 +1490,8 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     return `<section class="panel"><div class="soon-h"><h2>People</h2><span class="pill on">${people.length} on staff</span></div>
         <p class="muted small">Hiring, teams and promotions are on the People tab.</p></section>
       ${UI.officesPanel ? UI.officesPanel() : ''}
-      ${UI.acqPanel ? UI.acqPanel() : ''}${UI.rankPanel ? UI.rankPanel() : ''}`;
+      ${UI.techPanel ? UI.techPanel() : ''}
+      ${UI.acqPanel ? UI.acqPanel() : ''}`;
   }
 
   /* ---------- settings ---------- */
@@ -1460,7 +1508,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
         <label class="field" for="ng-name"><span>Firm name</span><input id="ng-name" type="text" value="${esc(S.meta.firmName)}"></label>
         <label class="field" for="ng-seed"><span>Seed (blank = random)</span><input id="ng-seed" type="number" inputmode="numeric" placeholder="Random"></label>
         <div class="play"><button class="btn primary danger" data-act="newyes">Start new game</button><button class="btn" data-act="newno">Keep playing</button></div></div>`
-        : `<div class="play"><button class="btn" data-act="newgame">New game…</button></div>`}
+        : `<div class="play"><button class="btn" data-act="newgame">New game…</button><button class="btn" data-act="tutorial">Show the tutorial<small>on this game</small></button></div>`}
       </section>
       <section class="panel"><h2>Play it like an app</h2><p class="muted small">Open this game's link in Safari on iPhone (or Chrome on Android), tap Share, then Add to Home Screen. It opens straight to the game, and your save stays on that phone.</p></section>
       <section class="panel"><h2>Saved game</h2><p class="muted small">Your game saves after every month and every answer, on this device and to your claude.ai account, so it's still there after you close the app and on any device where you're signed in. <span id="cloudstate">${cloudLabel()}</span> The save code below is a backup you can copy and paste.</p>
@@ -1511,13 +1559,14 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
 
   /* ---------- events ---------- */
   function bind() {
-    document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; launchAsk = null; try { localStorage.setItem('cpaFirmSim.v2.tab', tab); } catch (e) { } render(); window.scrollTo(0, 0); });
+    document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; launchPick = []; try { localStorage.setItem('cpaFirmSim.v2.tab', tab); } catch (e) { } render(); window.scrollTo(0, 0); });
     document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
       const a = b.dataset.act;
       if (a === 'month' || a === 'year') play(a);
       else if (a === 'newgame') { confirmNew = true; render(); }
       else if (a === 'newno') { confirmNew = false; render(); }
       else if (a === 'newyes') newGame();
+      else if (a === 'tutorial') { S.meta.tutorial = 0; S.meta.tutorialPlayed = null; save(); UI.setTab('home'); }
       else if (a === 'resetset') { S.settings = C.defaultSettings(); save(); notice = 'Version 1 settings restored.'; render(); }
       else if (a === 'export') {
         const code = C.serialize(S), ta = $('#savecode'); ta.value = code;
@@ -1536,9 +1585,9 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     document.querySelectorAll('[data-mkt]').forEach(b => b.onclick = () => { C.setDecisions(S, +b.dataset.mkt, null); save(); render(); });
     const mkt = $('#mkt'); if (mkt) mkt.onchange = () => { C.setDecisions(S, mkt.value, null); save(); render(); };
     const pr = $('#price'); if (pr) { pr.oninput = () => { $('#pricev').textContent = (pr.value > 0 ? '+' : '') + pr.value + '%'; }; pr.onchange = () => { C.setDecisions(S, null, pr.value / 100); save(); render(); }; }
-    document.querySelectorAll('[data-launch]').forEach(b => b.onclick = () => { launchAsk = +b.dataset.launch; render(); });
-    document.querySelectorAll('[data-launchyes]').forEach(b => b.onclick = () => { const x = S.services.find(v => v.slot === +b.dataset.launchyes); if (C.launchService(S, x.slot)) notice = x.name + ' launches ' + C.monthLabel(S, x.fromTurn) + '.'; launchAsk = null; save(); render(); });
-    document.querySelectorAll('[data-launchno]').forEach(b => b.onclick = () => { launchAsk = null; render(); });
+    document.querySelectorAll('[data-launch]').forEach(b => b.onclick = () => { const sl = +b.dataset.launch, y = window.scrollY; launchPick = launchPick.includes(sl) ? launchPick.filter(v => v !== sl) : launchPick.concat(sl); render(); window.scrollTo(0, y); });
+    document.querySelectorAll('[data-launchyes]').forEach(b => b.onclick = () => { const y = window.scrollY, done = launchPick.map(sl => S.services.find(v => v.slot === sl)).filter(x => C.launchService(S, x.slot)); if (done.length) notice = done.map(x => x.short).join(', ') + (done.length > 1 ? ' launch ' : ' launches ') + C.monthLabel(S, done[0].fromTurn) + '.'; launchPick = []; save(); render(); window.scrollTo(0, y); });
+    document.querySelectorAll('[data-launchno]').forEach(b => b.onclick = () => { const y = window.scrollY; launchPick = []; render(); window.scrollTo(0, y); });
     document.querySelectorAll('[data-set]').forEach(i => i.onchange = () => { const r = C.SETTINGS.find(x => x[0] === i.dataset.set); let v = parseFloat(i.value); if (isNaN(v)) return; if (r[5] === 'p') v /= 100; S.settings[r[0]] = v; save(); notice = 'Saved: ' + r[1] + '.'; render(); });
   }
 
@@ -1549,6 +1598,8 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     if (!found) S.meta.savedAt = 0; // a brand-new game never wins over a save in your account
     C.advance(S); try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { } render();
     initCloud();
+    // A first visit is a new game: offer the tutorial (a save found in your account later replaces this game).
+    if (!found && UI.askTutorial) UI.askTutorial(() => { if (C.played(S) === 0) startGame({ tutorial: true }); }, () => { });
   }
   try { window.claude && window.claude.hot && window.claude.hot.snapshot && window.claude.hot.snapshot(() => ({ save: S ? C.serialize(S) : null })); } catch (e) { }
   // Boot after every module script has registered (people screen loads after this file).
@@ -2167,9 +2218,17 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     const dirs = C.roster(s, t).filter(p => p.office === o.id && info(p).lvl === 4).length;
     return { teams: teams.size, teamCap: C.officeTeamCap(s, o), dirs, dirCap: C.officeDirCap(s, o, t) };
   };
+  // Phase 10: one pass over people and teams for every office (was one pass per office; slow for big firms)
+  function officeCounts(s, t) {
+    const to = s.teamOffice || {}, nt = Math.max(t, C.nextTurn(s)), c = new Map(s.offices.map(o => [o.id, { teams: 0, dirsAll: 0, dirsIn: 0, pplIn: 0 }]));
+    C.teams(s, t).forEach(k => { const x = c.get(to[k.id]); if (x) x.teams++; });
+    C.roster(s, t).forEach(p => { const x = c.get(p.office); if (!x) return; const d = info(p).lvl === 4; if (d) x.dirsAll++; if (p.startTurn <= nt) { x.pplIn++; if (d) x.dirsIn++; } });
+    return c;
+  }
   C.officeRoom = function (s, t = refTurn(s)) {
     if (!s.offices.length) return null;
-    let team = 0, dir = 0; s.offices.forEach(o => { const l = C.officeLoad(s, o, t); team += Math.max(0, l.teamCap - l.teams); dir += Math.max(0, l.dirCap - l.dirs); });
+    const c = officeCounts(s, t);
+    let team = 0, dir = 0; s.offices.forEach(o => { const x = c.get(o.id); team += Math.max(0, C.officeTeamCap(s, o) - x.teams); dir += Math.max(0, x.dirsIn + Math.max(0, o.desks - x.pplIn) - x.dirsAll); });
     return { team, dir };
   };
   const basePlan = C.teamPlan;
@@ -2187,14 +2246,15 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   const basePlace = C.placeOffices;
   C.placeOffices = function (s, t = refTurn(s)) {
     if (s.offices.length) {
-      const to = (s.teamOffice = s.teamOffice || {}), ros = C.roster(s, t);
-      ros.filter(p => p.team != null && !to[p.team]).forEach(p => {
-        const best = s.offices.map(o => ({ o, l: C.officeLoad(s, o, t) })).sort((a, b) => (b.l.teamCap - b.l.teams) - (a.l.teamCap - a.l.teams))[0];
-        to[p.team] = best.o.id;
+      const to = (s.teamOffice = s.teamOffice || {}), ros = C.roster(s, t), c = officeCounts(s, t);
+      const best = (score) => s.offices.reduce((b, o) => (b == null || score(o) > score(b) ? o : b), null); // first office wins ties, as before
+      // each new team goes to the office with the most free team room (once per team, not once per member)
+      new Set(ros.filter(p => p.team != null && !to[p.team]).map(p => p.team)).forEach(team => {
+        const o = best(o => C.officeTeamCap(s, o) - c.get(o.id).teams); to[team] = o.id; c.get(o.id).teams++;
       });
       ros.filter(p => info(p).lvl === 4 && (p.office == null || !s.offices.some(o => o.id === p.office))).forEach(p => {
-        const best = s.offices.map(o => ({ o, l: C.officeLoad(s, o, t) })).sort((a, b) => (b.l.dirCap - b.l.dirs) - (a.l.dirCap - a.l.dirs))[0];
-        p.office = best.o.id;
+        const o = best(o => { const x = c.get(o.id); return x.dirsIn + Math.max(0, o.desks - x.pplIn) - x.dirsAll; });
+        p.office = o.id; const x = c.get(o.id); x.dirsAll++; if (p.startTurn <= Math.max(t, C.nextTurn(s))) { x.dirsIn++; x.pplIn++; }
       });
     }
     return basePlace(s, t);
@@ -2505,7 +2565,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   }
   function buildDeal(s, d) {
     const st = s.settings;
-    d.staff = Math.max(1, Math.round(d.revenue / st.revPerStaff));
+    d.staff = Math.round(d.revenue / st.revPerStaff); // v1 rule: practices under $100K come with no staff
     d.lines = d.lines || specialtyLines(s, d.revenue);
     d.mix = clientMix(s, d.revenue, d.lines);
     d.monthly = d.price / st.payTerm;
@@ -2611,7 +2671,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
       { k: 'Revenue', v: fmt$(d.revenue) }, { k: 'Price', v: fmt$(d.price) }, { k: 'Monthly payment (84 mo, no down)', v: fmt$(d.price / s.settings.payTerm) },
       { k: 'Check', v: col === 'green' ? 'Green: payment fits your profit' : col === 'yellow' ? 'Yellow: fits only with the firm\'s own profit' : 'Red: payment is more than you earn' },
       { k: 'Main office', v: d.main[0] }, { k: 'Offices it brings', v: d.offices.cities.length ? d.offices.cities.map(c => C.cityBase(c[0])).join(', ') : 'None (single location under ' + short$(s.settings.officeFrom) + ')' },
-      { k: 'Staff · directors', v: d.staff + ' · ' + d.directorsText }, { k: 'New service lines', v: lines.join(', ') || 'None' },
+      { k: 'Staff · directors', v: d.staff ? d.staff + ' · ' + d.directorsText : 'None (client list only)' }, { k: 'New service lines', v: lines.join(', ') || 'None' },
       'Clients: ' + Object.entries(d.mix).map(([sl, c]) => c + ' ' + s.services.find(x => x.slot === +sl).short).join(', ') + '. You keep ' + Math.round(s.settings.retention * 100) + '% after the deal.',
     ];
   }
@@ -2779,7 +2839,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     C.pushCard(s, { type: 'forSale', kind: 'choice', title: (fromHold ? 'On hold: ' : 'For sale: ') + d.name, data: { deal: d, lines: [
       { k: 'Revenue', v: fmt$(d.revenue) }, { k: 'Asking price', v: fmt$(d.price) }, { k: 'Monthly payment (no down)', v: fmt$(d.price / st.payTerm) },
       { k: 'Fits your budget?', v: col === 'green' ? 'Green: can afford' : col === 'yellow' ? 'Yellow: a stretch' : 'Red: can\'t afford yet' },
-      { k: 'Main office', v: d.main[0] + ' · ' + C.cityRegion(d.main[0], d.main[1]) }, { k: 'Staff', v: String(d.staff) }, { k: 'Brings', v: lines.join(', ') || 'No new service lines' },
+      { k: 'Main office', v: d.main[0] + ' · ' + C.cityRegion(d.main[0], d.main[1]) }, { k: 'Staff', v: d.staff ? String(d.staff) : 'None (the owner sells the client list)' }, { k: 'Brings', v: lines.join(', ') || 'No new service lines' },
       d.top500 ? 'A top 500 firm (#' + d.top500 + ').' : 'Most offers are now or never. Hold keeps it on your watch list for up to ' + st.holdMonths + ' months while you negotiate or save up.'],
       buttons: [{ value: 'buy', label: 'Buy…', primary: true }, ...(fromHold ? [] : [{ value: 'hold', label: 'Hold' }]), { value: 'pass', label: 'Pass' }] } });
   }
@@ -2827,6 +2887,125 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
   C.completeDeal = function (s, d, down) { s.watch = (s.watch || []).filter(w => w.deal.name !== d.name); return baseComplete(s, d, down); };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
+<script>/* ===== CPA Firm Simulator v2 — TECHNOLOGY AND CPE (phase 9) =====
+   1 Software tiers (Basic, Cloud, AI-assisted): a cost per person a month on top of the base software
+     cost, more client output per person, and a learning curve after an upgrade.
+   2 CPE: licensed staff (CPA, EA, CPB) spend yearly CPE hours (less billable time) and a training cost.
+     Skipping CPE saves both, but at year end each licensed person may lose their licenses.
+   All numbers are starting estimates in Settings (Technology and CPE) for balancing. */
+(function (G) {
+  const C = G.CPA, R = C.rng;
+  const fmt$ = (v) => '$' + Math.round(v).toLocaleString('en-US');
+  C.SETTINGS.push(
+    ['techCost1', 'Cloud tier: extra software cost per person / month', 250, 'v2', 'Technology and CPE', '$'],
+    ['techCost2', 'AI-assisted tier: extra software cost per person / month', 600, 'v2', 'Technology and CPE', '$'],
+    ['techBoost1', 'Cloud tier: extra client output per person', 0.08, 'v2', 'Technology and CPE', 'p'],
+    ['techBoost2', 'AI-assisted tier: extra client output per person', 0.15, 'v2', 'Technology and CPE', 'p'],
+    ['techLearnLoss', 'Output lost the first month after an upgrade (per tier)', 0.15, 'v2', 'Technology and CPE', 'p'],
+    ['techLearnMonths', 'Months until the learning curve is over', 4, 'v2', 'Technology and CPE', 'n'],
+    ['cpeCPA', 'CPE hours a year: CPA', 40, 'v2', 'Technology and CPE', 'n'],
+    ['cpeEA', 'CPE hours a year: EA', 24, 'v2', 'Technology and CPE', 'n'],
+    ['cpeCPB', 'CPE hours a year: CPB', 20, 'v2', 'Technology and CPE', 'n'],
+    ['cpeCostHr', 'CPE training cost per hour', 30, 'v2', 'Technology and CPE', '$'],
+    ['cpeRisk', 'Chance a licensed person loses their licenses after a full year without CPE', 0.5, 'v2', 'Technology and CPE', 'p'],
+    ['overdraftRate', 'Yearly interest on negative cash (line of credit)', 0.10, 'v2', 'Game', 'p'],
+  );
+  C.TECH = [
+    { name: 'Basic', text: 'Desktop software and spreadsheets. Included in the base software cost.' },
+    { name: 'Cloud', text: 'Cloud accounting, portals and e-signatures. Everyone can handle more clients.' },
+    { name: 'AI-assisted', text: 'AI bookkeeping, review and drafting on top of cloud tools. The biggest boost, at the highest cost.' },
+  ];
+  C.LICENSES = ['CPA', 'EA', 'CPB'];
+  const tech = (s) => (s.tech = s.tech || { tier: 0, since: null, loss: 0 });
+  const nowT = (s) => s.cur ? s.cur.t : C.nextTurn(s);
+  C.techBoost = (s, tier) => tier === 2 ? s.settings.techBoost2 : tier === 1 ? s.settings.techBoost1 : 0;
+  C.techCost = (s, tier) => tier === 2 ? s.settings.techCost2 : tier === 1 ? s.settings.techCost1 : 0;
+  // Learning curve: the loss is full in the first month after the switch and fades to 0 over techLearnMonths
+  C.techLearning = function (s, t) {
+    const tc = tech(s); if (!tc.loss || tc.since == null) return 0;
+    const n = Math.max(1, s.settings.techLearnMonths), k = (t == null ? nowT(s) : t) - tc.since;
+    return k < 0 ? 0 : tc.loss * Math.max(0, 1 - k / n);
+  };
+  C.techFactor = function (s, t) { const tc = tech(s); return (1 + C.techBoost(s, tc.tier)) * (1 - C.techLearning(s, t)); };
+  C.setTech = function (s, tier) {
+    const tc = tech(s); tier = Math.max(0, Math.min(2, Math.round(tier)));
+    if (tier === tc.tier) return false;
+    const up = tier - tc.tier;
+    tc.loss = up > 0 ? Math.min(0.6, up * s.settings.techLearnLoss) : 0; // going down has no learning curve
+    tc.tier = tier; tc.since = C.nextTurn(s);
+    return true;
+  };
+  // CPE
+  C.cpeOn = (s) => s.decisions.cpe !== false;
+  C.cpeYearHours = (s, p) => { const c = p.certs || [], st = s.settings; return Math.max(c.includes('CPA') ? st.cpeCPA : 0, c.includes('EA') ? st.cpeEA : 0, c.includes('CPB') ? st.cpeCPB : 0); };
+  C.cpeMonthHours = (s, p) => C.cpeOn(s) || p.id === 1 ? C.cpeYearHours(s, p) / 12 : 0; // you always keep your own CPE current
+  C.licensed = (s, t) => C.activePeople(s, t).filter(p => C.cpeYearHours(s, p) > 0);
+  C.cpeMonthCost = (s, t) => C.licensed(s, t).filter(p => C.cpeOn(s) || p.id === 1).reduce((a, p) => a + C.cpeYearHours(s, p) * s.settings.cpeCostHr / 12 * (p.hc || 1), 0);
+  C.overdraftInterest = (s) => { const L = s.history.log, cash = (L.length ? L[L.length - 1].cash : s.settings.startingCash) - (s.pendingOut || 0); return cash < 0 ? -cash * (+s.settings.overdraftRate || 0) / 12 : 0; };
+  C.techMonthCost = (s, t) => C.activePeople(s, t).reduce((a, p) => a + (p.hc || 1), 0) * C.techCost(s, tech(s).tier);
+
+  C.techCard = function (s, tier) {
+    const tc = tech(s), st = s.settings, t = C.nextTurn(s), heads = C.activePeople(s, t).reduce((a, p) => a + (p.hc || 1), 0), up = tier > tc.tier;
+    C.pushCardFront(s, { type: 'techSwitch', kind: 'choice', title: 'Switch to ' + C.TECH[tier].name + '?', data: { tier, lines: [C.TECH[tier].text,
+      { k: 'Extra software cost', v: fmt$(C.techCost(s, tier)) + ' per person a month (' + fmt$(C.techCost(s, tier) * heads) + ' now)' },
+      { k: 'Client output per person', v: '+' + Math.round(C.techBoost(s, tier) * 100) + '% (now +' + Math.round(C.techBoost(s, tc.tier) * 100) + '%)' },
+      up ? 'Learning curve: everyone does ' + Math.round(Math.min(0.6, (tier - tc.tier) * st.techLearnLoss) * 100) + '% less in the first month, easing off over ' + st.techLearnMonths + ' months.' : 'Going down a tier has no learning curve, but the extra output goes away.'],
+      buttons: [{ value: 'yes', label: 'Switch from ' + C.monthLabel(s, t), primary: true }, { value: 'no', label: 'Cancel' }] } });
+  };
+  Object.assign(C.cardHandlers, { techSwitch(s, card, a) { if (a && a.v === 'yes') C.setTech(s, card.data.tier); } });
+  C.register({
+    id: 'tech',
+    init(s) { s.tech = { tier: 0, since: null, loss: 0 }; s.decisions.cpe = true; s.meta.cpeSkip = 0; },
+    migrate(s) { tech(s); if (s.decisions.cpe == null) s.decisions.cpe = true; s.meta.cpeSkip = s.meta.cpeSkip || 0; },
+    stages: [
+      { id: 'cpeTrack', after: 'compute', run(s) { if (!C.cpeOn(s)) s.meta.cpeSkip = (s.meta.cpeSkip || 0) + 1; } },
+    ],
+    hooks: {
+      extraCost(s, t) { return C.techMonthCost(s, t) + C.cpeMonthCost(s, t) + C.overdraftInterest(s); },
+      yearEnd(s, y) {
+        const out = [], skip = Math.min(12, s.meta.cpeSkip || 0); s.meta.cpeSkip = 0;
+        const t = C.turnOf(s, y, 12), tc = tech(s);
+        if (tc.tier) out.push('Software: ' + C.TECH[tc.tier].name + ' tier.');
+        if (!skip) return out;
+        const lost = [];
+        C.licensed(s, t).filter(p => p.id !== 1).forEach(p => {
+          if (R.next(s) < s.settings.cpeRisk * skip / 12) { const had = p.certs.filter(c => C.LICENSES.includes(c)); p.certs = p.certs.filter(c => !C.LICENSES.includes(c)); p.source += '; lost ' + had.join('/') + ' (no CPE, ' + y + ')'; lost.push(p.name + ' (' + had.join(', ') + ')'); }
+        });
+        out.push('CPE was skipped for ' + skip + ' month' + (skip > 1 ? 's' : '') + ' this year. ' + (lost.length ? 'Licenses lapsed: ' + lost.slice(0, 10).join(', ') + (lost.length > 10 ? ' and ' + (lost.length - 10) + ' more' : '') + '. They can earn them back in later years.' : 'Every license survived this time.'));
+        return out;
+      },
+    },
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* ===== Technology and CPE panel (phase 9) — on the Growth tab ===== */
+(function () {
+  const C = window.CPA, UI = window.CPA_UI;
+  const $$ = (v) => '$' + Math.round(v || 0).toLocaleString('en-US');
+  UI.techPanel = function () {
+    const S = UI.state(), busy = C.busy(S), t = C.nextTurn(S), tc = S.tech || { tier: 0 }, st = S.settings;
+    const heads = C.activePeople(S, t).reduce((a, p) => a + (p.hc || 1), 0), lic = C.licensed(S, t), learn = C.techLearning(S, t);
+    const tiers = C.TECH.map((x, i) => `<li class="deal${i === tc.tier ? ' green' : ''}"><div class="off-h"><div><b>${x.name}</b><span>${x.text}</span></div>${i === tc.tier ? '<span class="pill on">In use</span>' : `<button class="chip act" data-tech="${i}"${busy ? ' disabled' : ''}>Switch</button>`}</div>
+      <div class="facts"><span>+<b class="num">${Math.round(C.techBoost(S, i) * 100)}%</b> output</span><span><b class="num">${$$(C.techCost(S, i))}</b> extra/person/mo</span><span><b class="num">${$$(C.techCost(S, i) * heads)}</b>/mo for your ${heads}</span></div></li>`).join('');
+    const cpeH = lic.reduce((a, p) => a + C.cpeYearHours(S, p), 0), cpeOn = C.cpeOn(S);
+    return `<section class="panel" id="techpanel"><div class="soon-h"><h2>Technology</h2><span class="pill on">${C.TECH[tc.tier].name}</span></div>
+      ${learn > 0 ? `<p class="note">Learning the new tools: output is ${Math.round(learn * 100)}% lower next month, easing off over the next few months.</p>` : ''}
+      <ul class="offs">${tiers}</ul>
+      <p class="muted small">Every tier also pays the base software cost (${$$(st.softwarePerHead)} per person a month). Higher tiers let each person handle more clients, after a short learning curve.</p></section>
+    <section class="panel"><div class="soon-h"><h2>CPE</h2><span class="pill ${cpeOn ? 'on' : 'bad'}">${cpeOn ? 'Kept current' : 'Skipping'}</span></div>
+      <div class="facts"><span><b class="num">${lic.length}</b> licensed (CPA, EA, CPB)</span><span><b class="num">${Math.round(cpeH)}</b> CPE hrs/yr</span><span><b class="num">${$$(C.cpeMonthCost(S, t))}</b>/mo training</span></div>
+      <p class="muted small">Licensed people spend ${st.cpeCPA} (CPA), ${st.cpeEA} (EA) or ${st.cpeCPB} (CPB) hours a year on CPE instead of client work, at ${$$(st.cpeCostHr)} an hour. Skipping saves both, but at year end each licensed person can lose their licenses (${Math.round(st.cpeRisk * 100)}% chance after a full year without CPE). You always keep your own CPE current.${S.meta.cpeSkip ? ' Skipped so far this year: ' + S.meta.cpeSkip + ' month' + (S.meta.cpeSkip > 1 ? 's' : '') + '.' : ''}</p>
+      <div class="chips"><button class="chip${cpeOn ? ' on' : ''}" data-cpe="1"${busy ? ' disabled' : ''}>Keep CPE current</button><button class="chip${cpeOn ? '' : ' on'}" data-cpe="0"${busy ? ' disabled' : ''}>Skip CPE</button></div></section>`;
+  };
+  const prevBind = UI.bindOffices;
+  UI.bindOffices = (refresh) => {
+    if (prevBind) prevBind(refresh);
+    const S = UI.state();
+    document.querySelectorAll('[data-tech]').forEach(b => b.onclick = () => { if (C.busy(S)) return; C.techCard(S, +b.dataset.tech); refresh(); });
+    document.querySelectorAll('[data-cpe]').forEach(b => b.onclick = () => { if (C.busy(S)) return; S.decisions.cpe = b.dataset.cpe === '1'; refresh(); });
+  };
+})();
+</script>
 <script>/* ===== Acquisitions + Rankings panels (phase 4) — on the Growth tab ===== */
 (function () {
   const C = window.CPA, UI = window.CPA_UI;
@@ -2840,7 +3019,7 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
       const d = w.deal, col = C.dealColor(S, d), left = w.until - C.nextTurn(S) + 1;
       const lines = d.lines.map(sl => S.services.find(x => x.slot === sl).short);
       return `<li class="deal ${col}"><div class="off-h"><div><b>${esc(d.name)}</b><span>${d.top500 ? 'Top 500 firm · ' : ''}${esc(d.main[0])} · ${esc(C.cityRegion(d.main[0], d.main[1]))}${lines.length ? ' · brings ' + esc(lines.join(', ')) : ''}</span></div><span class="pill ${col === 'green' ? 'on' : col === 'yellow' ? 'soon' : 'bad'}">${left} mo left</span></div>
-        <div class="facts"><span>Revenue <b class="num">${sh(d.revenue)}</b></span><span>Price <b class="num">${sh(d.price)}</b></span><span><b class="num">${$$(d.price / st.payTerm)}</b>/mo</span><span><b class="num">${d.staff}</b> staff</span></div>
+        <div class="facts"><span>Revenue <b class="num">${sh(d.revenue)}</b></span><span>Price <b class="num">${sh(d.price)}</b></span><span><b class="num">${$$(d.price / st.payTerm)}</b>/mo</span><span>${d.staff ? `<b class="num">${d.staff}</b> staff` : 'No staff'}</span></div>
         <div class="chips"><button class="chip act" data-wbuy="${i}"${busy ? ' disabled' : ''}>Buy…</button><button class="chip" data-wdrop="${i}"${busy ? ' disabled' : ''}>Drop</button></div></li>`;
     }).join('');
     const boughtThisYear = new Set(S.market.firms.filter(f => f.boughtByYou && f.boughtYear === y).map(f => f.id));
@@ -2890,6 +3069,68 @@ table.rk td:last-child{text-align:left;font-family:var(--f-body);white-space:nor
     document.querySelectorAll('[data-paydown]').forEach(b => b.onclick = () => { if (C.busy(S)) return; C.payDownCard(S, +b.dataset.paydown); refresh(); });
     document.querySelectorAll('[data-rall]').forEach(b => b.onclick = () => { showAll = !showAll; refresh(); });
     const rq = document.getElementById('rq'); if (rq) rq.onchange = () => { q = rq.value.trim(); refresh(); };
+  };
+})();
+</script>
+
+<script>/* ===== Tutorial (next update, Nov 3, 2026) =====
+   Every New Game asks: guided tutorial or Skip. The tutorial starts a preset firm and walks through
+   the main screens, highlighting each control; one step waits for you to play your first month. */
+(function () {
+  const C = window.CPA, UI = window.CPA_UI;
+  const STEPS = [
+    { tab: 'home', at: '.kpis', title: 'Welcome to your firm', text: 'This tutorial starts you with a preset firm: you, working remote from Rexburg, Idaho, with 13 clients and $20,000 in cash. These tiles show your cash, profit and revenue over the last 12 months, and your live rank on the IPA 500.' },
+    { tab: 'home', at: '.gauges', title: 'Capacity and workload', text: 'Capacity used compares the yearly hours your clients need with what your people can do. Near 100% you stop winning new clients. Workload is this month alone; over 100% means more clients leave next month. Busy season (January to April, September and October) runs hotter.' },
+    { tab: 'home', at: '.decide .field', title: 'Marketing and price', text: 'Marketing buys leads (about one per $200). We set it to $500 a month for you. The price slider moves all your fees: higher prices earn more per client but win fewer and lose more.' },
+    { tab: 'home', at: '[data-act=month]', wait: 'month', title: 'Play your first month', text: 'Tap Play next month. Two dice set the month: a growth roll for leads and an event roll. A pop-up sums up the month; tap Continue to close it. Play year runs through December and stops whenever there is a decision for you.' },
+    { tab: 'clients', at: '.svcs', title: 'Clients and services', text: 'Every service shows its clients, fee and share of revenue. Services marked Select to launch can be added: tick as many as you like, then launch them together from the bar at the bottom. Locked ones come with a firm you buy or need something first.' },
+    { tab: 'people', at: '[data-pact=hire]', title: 'Hiring', text: 'Hire someone opens the hiring flow: pick a role, then a candidate (age, experience, degree, school, certifications and pay). The Hiring desk below shows which groups need help; 80% load or more means hire. You will also get pop-ups in August and before busy season.' },
+    { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead two teams yourself; after that each team needs a director. Promotions happen May to July, or any time with Promote someone.' },
+    { tab: 'more', at: '[data-oact=open]', title: 'Offices', text: 'You start remote. Open an office when your revenue supports it or once you hire admin staff: pick a city, a size in desks, and rent or buy. When an office runs out of desks you choose a bigger space, buying a building, or another office.' },
+    { tab: 'more', at: '#techpanel', title: 'Technology and CPE', text: 'Better software lets everyone handle more clients, for a monthly cost per person and a short learning curve after you switch. Below it, CPE: licensed staff need yearly training hours. Skipping saves time and money but can cost them their licenses.' },
+    { tab: 'more', at: '[data-acqreg]', title: 'Buying firms', text: 'Firms come up for sale through the year as pop-ups. Green means the payment fits your profit, yellow is a stretch, red you can\'t afford yet. Buy, Pass, or Hold one for up to 12 months. Pick the regions you\'re willing to buy in here.' },
+    { tab: 'ranks', at: '.rk', title: 'The IPA 500', text: 'Your goal: climb the IPA 500. The list updates every August from last year\'s revenue, with mergers, private equity deals and news. Your live rank (last 12 months) shows in the header the whole time.' },
+    { tab: 'settings', at: '[data-act=export]', title: 'Saving and settings', text: 'Your game saves after every month and every answer. Copy save code makes a backup. Every rule in the game is a setting below if you want to tune it. You can replay this tutorial here any time. That\'s the tour. Good luck!' },
+  ];
+  let shown = null;
+  const el = () => document.getElementById('tut');
+  function clearHi() { document.querySelectorAll('.tut-hi').forEach(x => x.classList.remove('tut-hi')); }
+  function end(S) { S.meta.tutorial = null; S.meta.tutorialPlayed = null; shown = null; clearHi(); el().hidden = true; UI.save(); UI.render(); }
+  UI.afterRender = function () {
+    const S = UI.state(), box = el(); if (!box) return;
+    const k = S.meta.tutorial;
+    clearHi();
+    if (k == null || k >= STEPS.length) { box.hidden = true; shown = null; return; }
+    const st = STEPS[k];
+    if (st.wait === 'month' && S.meta.tutorialPlayed == null) S.meta.tutorialPlayed = C.played(S);
+    const waiting = st.wait === 'month' && C.played(S) <= S.meta.tutorialPlayed;
+    if (st.wait === 'month' && !waiting && !S.queue.length && !C.busy(S)) { S.meta.tutorial = k + 1; UI.save(); return UI.setTab(STEPS[k + 1].tab); }
+    if (UI.tab() !== st.tab) return UI.setTab(st.tab);
+    if (S.queue.length) { box.hidden = true; return; } // a pop-up is open; the tutorial waits behind it
+    const target = st.at.split(',').map(q => document.querySelector(q.trim())).find(Boolean);
+    if (target) target.classList.add('tut-hi');
+    box.innerHTML = `<div class="tut-top"><h3>${st.title}</h3><span>Tutorial ${k + 1} of ${STEPS.length}</span></div><p>${st.text}</p>${waiting ? '<p class="tut-wait">Waiting for you to tap Play next month…</p>' : ''}
+      <div class="tut-b">${k ? '<button class="btn" data-tut="back">Back</button>' : ''}<button class="btn primary" data-tut="next"${waiting ? ' disabled' : ''}>${k === STEPS.length - 1 ? 'Finish' : 'Next'}</button><button class="btn" data-tut="skip">Skip tutorial</button></div>`;
+    box.hidden = false;
+    box.querySelectorAll('[data-tut]').forEach(b => b.onclick = () => {
+      const a = b.dataset.tut;
+      if (a === 'skip' || (a === 'next' && k === STEPS.length - 1)) return end(S);
+      S.meta.tutorial = Math.max(0, k + (a === 'next' ? 1 : -1)); if (STEPS[S.meta.tutorial].wait) S.meta.tutorialPlayed = null;
+      UI.save(); UI.setTab(STEPS[S.meta.tutorial].tab);
+    });
+    if (shown !== k && target) { shown = k; const r = target.getBoundingClientRect(); if (r.top < 70 || r.bottom > innerHeight - box.offsetHeight - 80) window.scrollTo({ top: Math.max(0, scrollY + r.top - 90), behavior: 'auto' }); }
+  };
+  // The question asked at every New Game
+  UI.askTutorial = function (onTutorial, onSkip) {
+    const box = document.getElementById('tutask'); if (!box) return onSkip();
+    box.innerHTML = `<div class="scrim"></div><div class="card" role="dialog" aria-modal="true" aria-labelledby="tutask-t"><div class="card-h"><span class="lbl">New game</span><h2 id="tutask-t">Take the guided tutorial?</h2></div>
+      <div class="card-b"><p>The tutorial starts you with a preset firm (BlueJaye Financials LLC, $500 a month of marketing) and walks you through the game: how to play a month, where to hire, how to open offices, buy firms and read the IPA 500. It takes about two minutes.</p><p class="muted small">Skip starts your game with the name and seed you chose.</p></div>
+      <div class="card-f"><button class="btn primary" data-ta="yes">Start the tutorial</button><button class="btn" data-ta="no">Skip</button></div></div>`;
+    box.hidden = false; document.body.classList.add('locked');
+    const done = (f) => { box.hidden = true; box.innerHTML = ''; document.body.classList.remove('locked'); f(); };
+    box.querySelector('[data-ta=yes]').onclick = () => done(onTutorial);
+    box.querySelector('[data-ta=no]').onclick = () => done(onSkip);
+    box.querySelector('[data-ta=yes]').focus({ preventScroll: true });
   };
 })();
 </script>
