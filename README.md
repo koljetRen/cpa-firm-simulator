@@ -2,13 +2,18 @@
 
 A browser game where you build an accounting firm from a one-person practice toward the IPA 500: win clients, price services, hire staff, open offices, and acquire other firms month by month.
 
-Version 2.13.0: version 2 (phases 1–10 of the build plan) and every update since, through firm types, first teams and cross-department help.
+Version 2.13.1: version 2 (phases 1–10 of the build plan) and every update since, through firm types, first teams and cross-department help.
 
 ## Play
 
 Open `index.html` in any modern browser. There's no build step and no server.
 
 To host it online, enable **GitHub Pages** (Settings → Pages → Deploy from a branch → `main` / root). The game will be at `https://<username>.github.io/cpa-firm-simulator/`.
+
+## What's new in 2.13.1
+
+- **You and every partner lead 3 teams** (was 2). Adjustable in Settings.
+- **Bigger offices at the same cost.** An office holds 1 team per 10 desks. Small offices are 30 desks (3 teams), medium 70 (7), large 150 (15) and extra large 300 (30). Rent, buying and upkeep per desk are half what they were, so each size costs about the same as before: a small office still rents for $6,750 a month. Existing offices keep their desks; Change space moves them to a new size. Existing games switch to the new presets and prices on load, unless you changed those settings.
 
 ## What's new in 2.13.0
 

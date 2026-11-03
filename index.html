@@ -226,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.13.0'; // firms for sale have a focus, first team per department, cross-department help
+  CPA.VERSION = '2.13.1'; // you and partners lead 3 teams; office presets hold 3/7/15/30 teams at the same cost
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -255,9 +255,9 @@ main:has(.stickybar){padding-bottom:230px}
     ['bonusBoth', 'Output bonus: CPA + EA', 0.20, 'B171', 'Capacity', 'p'],
     ['actAsDirectorUntil', 'You act as a director until revenue reaches', 2000000, 'B121', 'People', '$'],
     ['missingDirectorChurn', 'Extra client losses when directors are missing', 0.5, 'B122', 'People', 'n'],
-    ['rentPerDesk', 'Rent per desk per month', 450, 'B190', 'Offices', '$'],
-    ['buyPerDesk', 'Buy or build per desk (one-time)', 45000, 'B191', 'Offices', '$'],
-    ['upkeepPerDesk', 'Owned building upkeep per desk / month', 120, 'B192', 'Offices', '$'],
+    ['rentPerDesk', 'Rent per desk per month', 225, 'B190 (v2: half, offices have twice the desks)', 'Offices', '$'],
+    ['buyPerDesk', 'Buy or build per desk (one-time)', 22500, 'B191 (v2: half)', 'Offices', '$'],
+    ['upkeepPerDesk', 'Owned building upkeep per desk / month', 60, 'B192 (v2: half)', 'Offices', '$'],
   ];
   CPA.defaultSettings = () => Object.fromEntries(CPA.SETTINGS.map(s => [s[0], s[2]]));
 
@@ -792,27 +792,29 @@ main:has(.stickybar){padding-bottom:230px}
     return list;
   };
   C.directors = (s, t = refTurn(s), d) => roster(s, t).filter(p => info(p).lvl === 4 && (!d || info(p).dept === d));
-  C.youLead = (s) => (+s.settings.youLeadAlways || C.revT12(s) < s.settings.actAsDirectorUntil) ? 2 : 0;
+  C.youLead = (s) => (+s.settings.youLeadAlways || C.revT12(s) < s.settings.actAsDirectorUntil) ? Math.max(0, Math.round(+s.settings.youTeams || 2)) : 0;
+  const perPartner = (s) => Math.max(1, Math.round(+s.settings.partnerTeams || 2)); // teams each partner leads
   C.teamPlan = function (s, t = refTurn(s)) {
     const teams = C.teams(s, t), yl = C.youLead(s);
     // Nov 3: each department you offer gets one team its manager runs without a partner (led = teams that need a leader)
     const freeOn = +s.settings.freeFirstTeam === 1;
     const byD = {}; DEPTS.forEach(d => { const n = teams.filter(k => k.dept === d).length, free = freeOn && C.roleUseful(s, roleFor(d, 1)) ? 1 : 0; byD[d] = { teams: n, free, led: Math.max(0, n - free), dirs: C.directors(s, t, d).length }; });
-    let overflow = 0; DEPTS.forEach(d => { const x = byD[d]; x.room = Math.max(0, 2 * x.dirs - x.led); overflow += Math.max(0, x.led - 2 * x.dirs); });
+    const PT = perPartner(s);
+    let overflow = 0; DEPTS.forEach(d => { const x = byD[d]; x.room = Math.max(0, PT * x.dirs - x.led); overflow += Math.max(0, x.led - PT * x.dirs); });
     DEPTS.forEach(d => { byD[d].newRoom = byD[d].room + Math.max(0, yl - overflow) + (byD[d].teams < byD[d].free ? 1 : 0); });
     const dirsAll = C.directors(s, t).length;
     const unassigned = roster(s, t).filter(p => isTeamLevel(p) && p.team == null);
-    const plan = { teams, byD, youLead: yl, overflow, teamsUnled: Math.max(0, overflow - yl), maxTeams: Math.max(1, 2 * dirsAll + yl + DEPTS.reduce((a, d) => a + byD[d].free, 0)), unassigned };
+    const plan = { teams, byD, youLead: yl, overflow, teamsUnled: Math.max(0, overflow - yl), maxTeams: Math.max(1, PT * dirsAll + yl + DEPTS.reduce((a, d) => a + byD[d].free, 0)), unassigned };
     // Director seats per department
     if (+s.settings.youLeadAlways) {
       // v2: you lead two teams of any department; a director is needed for a department's next team beyond that
-      let left = 2; const alloc = {};
-      DEPTS.slice().sort((a, b) => byD[b].teams - byD[a].teams).forEach(d => { const k = Math.min(left, Math.max(0, byD[d].led - 2 * byD[d].dirs)); alloc[d] = k; left -= k; });
-      DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.ceil((byD[d].led + nxt - alloc[d] - left) / 2) - byD[d].dirs) : 0; });
-    } else DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.floor(byD[d].led / 2) + nxt - byD[d].dirs) : 0; });
+      let left = yl; const alloc = {};
+      DEPTS.slice().sort((a, b) => byD[b].teams - byD[a].teams).forEach(d => { const k = Math.min(left, Math.max(0, byD[d].led - PT * byD[d].dirs)); alloc[d] = k; left -= k; });
+      DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.ceil((byD[d].led + nxt - alloc[d] - left) / PT) - byD[d].dirs) : 0; });
+    } else DEPTS.forEach(d => { const nxt = byD[d].teams < byD[d].free ? 0 : 1; byD[d].dirSeats = C.roleUseful(s, roleFor(d, 1)) ? Math.max(0, Math.floor(byD[d].led / PT) + nxt - byD[d].dirs) : 0; });
     const waiting = DEPTS.filter(d => unassigned.some(p => info(p).dept === d) && byD[d].newRoom <= 0).length;
-    plan.gap = Math.ceil(plan.teamsUnled / 2) + waiting;
-    plan.needed = Math.max(Math.ceil(teams.length / 2), s.offices.length);
+    plan.gap = Math.ceil(plan.teamsUnled / PT) + waiting;
+    plan.needed = Math.max(Math.ceil(teams.length / PT), s.offices.length);
     return plan;
   };
 
@@ -994,7 +996,7 @@ main:has(.stickybar){padding-bottom:230px}
   C.startHireFlow = function (s, roles, title, front) {
     roles = roles || C.hireableRoles(s, 'any');
     const push = front ? C.pushCardFront : C.pushCard;
-    if (!roles.length) { push(s, { type: 'info', kind: 'choice', title: title || 'Hire someone', data: { lines: ['There are no open spots right now. Associates fill team seats; new teams need a director (you lead 2 until revenue reaches $2M). Interns are hired January to April.'] } }); return; }
+    if (!roles.length) { push(s, { type: 'info', kind: 'choice', title: title || 'Hire someone', data: { lines: ['There are no open spots right now. People join teams, and a new team needs room: the first team in each department runs under its manager, you lead ' + C.youLead(s) + ' teams, and each partner leads ' + perPartner(s) + ' more. Offices also need 10 desks per team. Interns are hired January to April.'] } }); return; }
     push(s, { type: 'hireRole', kind: 'choice', title: title || 'Hire someone', data: { lines: loadLines(s), options: roles.map(n => ({ value: n, label: n, sub: (RI[n].lvl === 4 && C.partnersOn && C.partnersOn(s) ? 'Partner pay: ' + fmt$(s.settings.partnerMin) + ' a year or an equal share of profit' : 'Base ' + fmt$(RI[n].base)) + ' · ' + C.openSpots(s, n) + ' open' })), buttons: [{ value: 'cancel', label: 'Cancel' }] } });
   };
   function pushCandidates(s, roleName, left, hired) {
@@ -1733,10 +1735,10 @@ main:has(.stickybar){padding-bottom:230px}
     ['officeExp', 'Offices trend-line exponent', 0.672, 'B183', 'Offices', 'n'],
     ['officeMaxGrowth', 'Most offices from growth alone', 150, 'B184', 'Offices', 'n'],
     ['offPerAdminMgr', 'Offices per regional admin manager', 4, 'B163', 'Offices', 'n'],
-    ['deskSmall', 'Office size: small (desks)', 15, 'B194', 'Offices', 'n'],
-    ['deskMedium', 'Office size: medium (desks)', 30, 'B195', 'Offices', 'n'],
-    ['deskLarge', 'Office size: large (desks)', 60, 'B196', 'Offices', 'n'],
-    ['deskXL', 'Office size: extra large (desks)', 150, 'B198', 'Offices', 'n'],
+    ['deskSmall', 'Office size: small (desks, 3 teams)', 30, 'B194 (v2: 30)', 'Offices', 'n'],
+    ['deskMedium', 'Office size: medium (desks, 7 teams)', 70, 'B195 (v2: 70)', 'Offices', 'n'],
+    ['deskLarge', 'Office size: large (desks, 15 teams)', 150, 'B196 (v2: 150)', 'Offices', 'n'],
+    ['deskXL', 'Office size: extra large (desks, 30 teams)', 300, 'B198 (v2: 300)', 'Offices', 'n'],
   );
 
   const fmt$ = (v) => (v < 0 ? '−$' : '$') + Math.abs(Math.round(v)).toLocaleString('en-US');
@@ -2024,7 +2026,9 @@ main:has(.stickybar){padding-bottom:230px}
   const info = (p) => RI[p.role] || {};
 
   C.SETTINGS.push(
-    ['youLeadAlways', 'You lead two teams of any department at any revenue (1/0)', 1, 'v2', 'Version 2 people', 'n'],
+    ['youLeadAlways', 'You lead teams of any department at any revenue (1/0)', 1, 'v2', 'Version 2 people', 'n'],
+    ['youTeams', 'Teams you lead', 3, 'v2 (was 2)', 'Version 2 people', 'n'],
+    ['partnerTeams', 'Teams each partner leads', 3, 'v2 (was 2)', 'Version 2 people', 'n'],
     ['payMasters', 'Pay boost: master\'s degree', 0.05, 'v2', 'Version 2 people', 'p'],
     ['payCPA', 'Pay boost: CPA', 0.05, 'v2', 'Version 2 people', 'p'],
     ['payEA', 'Pay boost: EA or CPB', 0.03, 'v2', 'Version 2 people', 'p'],
@@ -2404,7 +2408,7 @@ main:has(.stickybar){padding-bottom:230px}
       <p class="small"><b>School pipelines (${(S.pipelines || []).length} of ${C.pipelineLimit(S)}):</b> ${esc((S.pipelines || []).join(', ') || 'none')}</p>
       ${C.recruiters(S).length ? `<div class="chips"><button class="chip act" data-pipe="1"${busy ? ' disabled' : ''}>Add a pipeline school</button></div>` : ''}</section>
     <section class="panel"><h2>Teams <span class="muted small">${plan.teams.length} of ${plan.maxTeams} allowed</span></h2>
-      <div class="facts"><span>Directors: ${dirs}${plan.youLead ? ' · you lead 2 teams' : ''}${+S.settings.freeFirstTeam ? ' · the first team in each department runs under its manager' : ''}</span><span>Leadership gap <b class="num ${plan.gap ? 'neg' : ''}">${plan.gap}</b></span><span>Unassigned <b class="num">${plan.unassigned.length}</b></span></div>
+      <div class="facts"><span>Directors: ${dirs}${plan.youLead ? ' · you lead ' + plan.youLead + ' teams, each partner ' + (S.settings.partnerTeams || 2) : ''}${+S.settings.freeFirstTeam ? ' · the first team in each department runs under its manager' : ''}</span><span>Leadership gap <b class="num ${plan.gap ? 'neg' : ''}">${plan.gap}</b></span><span>Unassigned <b class="num">${plan.unassigned.length}</b></span></div>
       ${teams ? `<ul class="tms">${teams}</ul>` : '<p class="muted">No teams yet. Your first hire starts team 1.</p>'}</section>
     <section class="panel"><h2>Staff</h2><div class="chips">${depts.map(d => `<button class="chip${filter === d ? ' on' : ''}" data-pf="${d}">${d}</button>`).join('')}</div><ul class="ppl2">${ppl}</ul></section>`;
   }
@@ -3307,7 +3311,15 @@ main:has(.stickybar){padding-bottom:230px}
   };
   C.register({
     id: 'focus',
-    migrate(s) { s.pendingDeals = s.pendingDeals || []; },
+    init(s) { s.meta.flags.offices2 = true; s.pendingDeals = []; },
+    migrate(s) {
+      s.pendingDeals = s.pendingDeals || [];
+      if (!s.meta.flags.offices2) { // Nov 3: presets hold 3/7/15/30 teams at 10 desks each, at about the same cost per office
+        const OLD = { deskSmall: [15, 30], deskMedium: [30, 70], deskLarge: [60, 150], deskXL: [150, 300], rentPerDesk: [450, 225], buyPerDesk: [45000, 22500], upkeepPerDesk: [120, 60] };
+        Object.entries(OLD).forEach(([k, [o, n]]) => { if (s.settings[k] === o) s.settings[k] = n; });
+        s.meta.flags.offices2 = true;
+      }
+    },
     stages: [
       // clients from a deal arrive the month after it closes, with its staff
       { id: 'dealClients', before: 'compute', run(s, cur) {
@@ -3508,7 +3520,7 @@ main:has(.stickybar){padding-bottom:230px}
     { tab: 'home', at: '[data-act=month]', wait: 'month', title: 'Play your first month', text: 'Tap Play next month. Two dice set the month: a growth roll for leads and an event roll. A pop-up sums up the month; tap Continue to close it. Play year runs through December and stops whenever there is a decision for you.' },
     { tab: 'clients', at: '.svcs', title: 'Clients and services', text: 'Every service shows its clients, fee and share of revenue. Services marked Select to launch can be added: tick as many as you like, then launch them together from the bar at the bottom. Locked ones come with a firm you buy or need something first.' },
     { tab: 'people', at: '[data-pact=hire]', title: 'Hiring', text: 'Hire someone opens the hiring flow: pick a role, then a candidate (age, experience, degree, school, certifications and pay). The Hiring desk below shows which groups need help (80% load or more means hire), and which staff level: CFO work needs managers and directors, bookkeeping mostly associates. You will also get pop-ups in August and before busy season.' },
-    { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead two teams yourself; after that every two teams need a partner. Partners share 25% of the profit (at least $150K a year each), and each brings in new leads for their department. Promotions happen May to July, or any time with Promote someone.' },
+    { tab: 'people', at: '.tms, .panel:nth-of-type(4)', title: 'Teams and promotions', text: 'People work in teams of up to 1 manager, 3 seniors, their associates and 2 interns. You lead three teams yourself, the first team in each department runs under its manager, and each partner leads three more. Partners share 25% of the profit (at least $150K a year each), and each brings in new leads for their department. Promotions happen May to July, or any time with Promote someone.' },
     { tab: 'more', at: '[data-oact=open]', title: 'Offices', text: 'You start remote. Open an office when your revenue supports it or once you hire admin staff: pick a city, a size in desks, and rent or buy. When an office runs out of desks you choose a bigger space, buying a building, or another office.' },
     { tab: 'more', at: '#techpanel', title: 'Technology and CPE', text: 'Better software lets everyone handle more clients, for a monthly cost per person and a short learning curve after you switch. Below it, CPE: licensed staff need yearly training hours. Skipping saves time and money but can cost them their licenses.' },
     { tab: 'more', at: '[data-acqreg]', title: 'Buying firms', text: 'Firms come up for sale through the year as pop-ups. Green means the payment fits your profit, yellow is a stretch, red you can\'t afford yet. Buy, Pass, or Hold one for up to 12 months. Pick the regions you\'re willing to buy in here.' },
