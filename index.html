@@ -226,7 +226,7 @@ main:has(.stickybar){padding-bottom:230px}
 */
 (function (G) {
   const CPA = G.CPA = G.CPA || {};
-  CPA.VERSION = '2.12.0'; // partners: directors share 25% of profit with a $150K minimum
+  CPA.VERSION = '2.12.1'; // fewer firms for sale while small, fewer hours for everyday services, safer account saves
   CPA.PHASE = 'version 2 complete: phases 1–10 plus the Nov 3 update';
   const SAVE_FORMAT = 1;
 
@@ -272,10 +272,10 @@ main:has(.stickybar){padding-bottom:230px}
   // slot, name, short, type, hrs/client/yr, monthly churn, organic leads/mo, mktg weight, acquired mix, group, list fee, start clients, launch rule, monthly %
   // launch: 'start' = offered at New Game, 'launch' = can launch, 'acq' = acquisition-only, 'afterAudit' = launchable once Audit & Assurance is offered
   CPA.SERVICES = [
-    [1, 'CAS Tier 1 – Bookkeeping', 'CAS T1', 'Recurring', 60, 0.015, 0.35, 2, 0.30, 'CAS', 4320, 3, 'start', null, 'Monthly books, bank recs, financial statements'],
-    [2, 'Personal Tax (Form 1040)', 'Personal tax', 'Seasonal', 2, 0.008, 3, 5, 0.20, 'Tax', 480, 8, 'start', M([.05, .20, .25, .25, .02, .02, .02, .02, .07, .08, .01, .01]), 'Individual federal + state return'],
-    [3, 'Business Tax (1120 / 1120-S / 1065)', 'Business tax', 'Seasonal', 10, 0.008, 0.8, 2.5, 0.25, 'Tax', 1200, 2, 'start', M([.05, .15, .30, .10, .02, .02, .02, .02, .20, .05, .04, .03]), 'Corporate, S-corp or partnership return'],
-    [4, 'CAS Tier 2 – Bookkeeping + Payroll', 'CAS T2', 'Recurring', 84, 0.013, 0.2, 1, 0.12, 'CAS', 7920, 0, 'start', null, 'Tier 1 + payroll runs, filings, W-2s (about 5 employees)'],
+    [1, 'CAS Tier 1 – Bookkeeping', 'CAS T1', 'Recurring', 40, 0.015, 0.35, 2, 0.30, 'CAS', 4320, 3, 'start', null, 'Monthly books, bank recs, financial statements'],
+    [2, 'Personal Tax (Form 1040)', 'Personal tax', 'Seasonal', 1.5, 0.008, 3, 5, 0.20, 'Tax', 480, 8, 'start', M([.05, .20, .25, .25, .02, .02, .02, .02, .07, .08, .01, .01]), 'Individual federal + state return'],
+    [3, 'Business Tax (1120 / 1120-S / 1065)', 'Business tax', 'Seasonal', 8, 0.008, 0.8, 2.5, 0.25, 'Tax', 1200, 2, 'start', M([.05, .15, .30, .10, .02, .02, .02, .02, .20, .05, .04, .03]), 'Corporate, S-corp or partnership return'],
+    [4, 'CAS Tier 2 – Bookkeeping + Payroll', 'CAS T2', 'Recurring', 60, 0.013, 0.2, 1, 0.12, 'CAS', 7920, 0, 'start', null, 'Tier 1 + payroll runs, filings, W-2s (about 5 employees)'],
     [5, 'CAS Tier 3 – Outsourced Accounting Dept.', 'CAS T3', 'Recurring', 540, 0.012, 0.08, 0.6, 0.05, 'CAS', 39600, 0, 'launch', null, 'Tier 2 + AP/AR, monthly close, reporting, sales tax, 1099s'],
     [6, 'CAS Tier 4 – Controller + Light CFO', 'CAS T4', 'Recurring', 720, 0.015, 0.04, 0.4, 0, 'CAS', 61200, 0, 'launch', null, 'Tier 3 + budgeting, cash-flow forecasting, quarterly strategy'],
     [7, 'CAS Tier 5 – Fractional CFO (Growth)', 'CAS T5', 'Recurring', 1080, 0.025, 0.02, 0.2, 0, 'CAS', 147600, 0, 'launch', null, 'Tier 3 + 20–40 hrs/mo CFO; client $2M–$10M'],
@@ -1303,7 +1303,7 @@ main:has(.stickybar){padding-bottom:230px}
   /* ---------- storage ---------- */
   // Saves go to this device right away and to your claude.ai account a moment later (survives closing
   // a home-screen app, works across devices). A save is split into parts under the 256 KiB record limit.
-  let cloud = null, cloudTimer = null, cloudBusy = false, cloudState = 'connecting', saveFail = false, saveKB = 0;
+  let cloud = null, cloudTimer = null, cloudBusy = false, cloudState = 'connecting', saveFail = false, saveKB = 0, cloudSlot = null;
   const PART = 100000;
   function save() {
     if (S) S.meta.savedAt = Date.now();
@@ -1324,10 +1324,12 @@ main:has(.stickybar){padding-bottom:230px}
     if (cloudBusy) { scheduleCloud(); return; }
     cloudBusy = true;
     try {
-      const txt = C.serialize(S), n = Math.ceil(txt.length / PART);
-      for (let i = 0; i < n; i++) await cloud.doc('save' + i).set({ chunk: txt.slice(i * PART, (i + 1) * PART) });
-      await cloud.doc('saveMeta').set({ parts: n, savedAt: S.meta.savedAt || Date.now(), month: C.played(S), firm: S.meta.firmName });
-      cloudState = 'saved';
+      // Two slots (a, b): the new copy goes to the slot the save record isn't using, and the record moves
+      // to it only after every piece is written. A save cut off halfway leaves the last good copy in place.
+      const txt = C.serialize(S), n = Math.ceil(txt.length / PART), slot = cloudSlot === 'a' ? 'b' : 'a';
+      for (let i = 0; i < n; i++) await cloud.doc('save' + slot + i).set({ chunk: txt.slice(i * PART, (i + 1) * PART) });
+      await cloud.doc('saveMeta').set({ parts: n, slot, savedAt: S.meta.savedAt || Date.now(), month: C.played(S), firm: S.meta.firmName });
+      cloudSlot = slot; cloudState = 'saved';
     } catch (e) { cloudState = 'error'; }
     cloudBusy = false;
     const el = document.getElementById('cloudstate'); if (el) el.textContent = cloudLabel();
@@ -1342,8 +1344,9 @@ main:has(.stickybar){padding-bottom:230px}
       cloud = db.collection('data/users/' + uid);
       const meta = await cloud.doc('saveMeta').get();
       const m = meta.exists ? meta.data() : null;
+      cloudSlot = m && m.slot ? m.slot : null; // older saves used one slot ('save0', 'save1', ...)
       if (m && m.parts && ((+m.savedAt || 0) > ((S && S.meta.savedAt) || 0) || (C.played(S) === 0 && (+m.month || 0) > 0))) {
-        const parts = await Promise.all(Array.from({ length: m.parts }, (_, i) => cloud.doc('save' + i).get()));
+        const parts = await Promise.all(Array.from({ length: m.parts }, (_, i) => cloud.doc('save' + (m.slot || '') + i).get()));
         if (parts.every(p => p.exists)) {
           const next = C.deserialize(parts.map(p => p.data().chunk).join(''));
           S = next; try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { }
@@ -2772,7 +2775,9 @@ main:has(.stickybar){padding-bottom:230px}
 
   C.SETTINGS.push(
     ['marketMonth', 'Month the IPA 500 updates (1–12)', 8, 'v2', 'Version 2 market', 'n'],
-    ['offerChance', 'Chance a firm is offered for sale each month', 0.5, 'v2', 'Version 2 market', 'p'],
+    ['offerScale', 'Firms for sale a year = square root of (your revenue ÷ this)', 100000, 'v2', 'Version 2 market', '$'],
+    ['offersMin', 'Fewest firms for sale a year', 1, 'v2', 'Version 2 market', 'n'],
+    ['offersMax', 'Most firms for sale a year', 12, 'v2', 'Version 2 market', 'n'],
     ['holdMonths', 'Months a firm can stay on your Hold list', 12, 'v2', 'Version 2 market', 'n'],
     ['peBuyX', 'PE-backed firms buy this many times as often', 3, 'v2', 'Version 2 market', 'n'],
     ['pePeerMax', 'Largest target for a PE buyer (× its revenue)', 1.2, 'v2', 'Version 2 market', 'n'],
@@ -2850,6 +2855,11 @@ main:has(.stickybar){padding-bottom:230px}
   };
 
   /* ---------- Firms for sale through the year ---------- */
+  // About √(revenue ÷ $100K) offers a year: 1 under $100K, 2 at $400K, about 3 at $1M, 5 at $2.5M, 10 at $10M, 12 from $14.4M
+  C.offersPerYear = function (s) {
+    const st = s.settings, rev = Math.max(0, C.revenueBase(s));
+    return Math.max(+st.offersMin || 0, Math.min(+st.offersMax || 12, Math.sqrt(rev / Math.max(1, +st.offerScale || 100000))));
+  };
   function makeOffer(s) {
     const want = pick(s, ['green', 'yellow', 'red']), save = s.practices;
     let best = null;
@@ -2877,7 +2887,7 @@ main:has(.stickybar){padding-bottom:230px}
     const before = (s.watch || []).length;
     s.watch = (s.watch || []).filter(w => w.until >= t);
     if (s.watch.length < before) (s.meta.peNews = s.meta.peNews || []);
-    if (R.next(s) >= st.offerChance) return;
+    if (R.next(s) >= C.offersPerYear(s) / 12) return; // Nov 3: fewer offers while you're small
     const d = makeOffer(s);
     if (d) offerCard(s, d, false);
   }
@@ -3172,8 +3182,9 @@ main:has(.stickybar){padding-bottom:230px}
     id: 'levels',
     migrate(s) {
       C.trimMergers(s);
-      // Nov 3: CAS Tiers 3-6 take 50% more hours per client (v1: 360 / 480 / 720 / 900)
-      const OLD = { 5: [360, 540], 6: [480, 720], 7: [720, 1080], 8: [900, 1350] };
+      // Nov 3: CAS Tiers 3-6 take 50% more hours per client (v1: 360 / 480 / 720 / 900); everyday services take
+      // fewer (Jaye's play-test: CAS T1 60 -> 40, CAS T2 84 -> 60, personal tax 2 -> 1.5, business tax 10 -> 8)
+      const OLD = { 5: [360, 540], 6: [480, 720], 7: [720, 1080], 8: [900, 1350], 1: [60, 40], 4: [84, 60], 2: [2, 1.5], 3: [10, 8] };
       s.services.forEach(x => { const o = OLD[x.slot]; if (o && x.hpc === o[0]) x.hpc = o[1]; });
     },
     stages: [
@@ -3318,7 +3329,7 @@ main:has(.stickybar){padding-bottom:230px}
     const regs = S.acqRegions || [], integ = C.integrating ? C.integrating(S) : null;
     return `<section class="panel"><div class="soon-h"><h2>Acquisitions</h2><span class="pill on">${(S.watch || []).length} on hold</span></div>
       ${integ ? `<p class="note">Integrating ${esc(integ.firm)} (${Math.round(integ.ratio * 100)}% of your revenue when you bought it): no acquisitions until ${C.monthLabel(S, integ.until + 1)}. You can still Hold firms that come up for sale.</p>` : ''}
-      <p class="muted small">Firms come up for sale through the year (about ${Math.round(st.offerChance * 12)} a year) as pop-ups: buy, pass, or Hold one for up to ${st.holdMonths} months. Buying a firm bigger than ${Math.round(st.integrateAt * 100)}% of your revenue pauses acquisitions while you integrate it (about ${st.integrateMonths} months per 1× your revenue, ${st.integrateMin}–${st.integrateMax} months). Green: the payment fits your average monthly profit (${$$(avg)}). Yellow: it fits only with the bought firm's own profit. Red: you can't afford it yet. Payments run ${st.payTerm} months; you keep ${Math.round(st.retention * 100)}% of its clients.</p>
+      <p class="muted small">Firms come up for sale through the year, more often as you grow: about ${(Math.round(C.offersPerYear(S) * 10) / 10).toLocaleString('en-US')} a year at your revenue now, rising to ${st.offersMax} a year for big firms. Each one is a pop-up: buy, pass, or Hold one for up to ${st.holdMonths} months. Buying a firm bigger than ${Math.round(st.integrateAt * 100)}% of your revenue pauses acquisitions while you integrate it (about ${st.integrateMonths} months per 1× your revenue, ${st.integrateMin}–${st.integrateMax} months). Green: the payment fits your average monthly profit (${$$(avg)}). Yellow: it fits only with the bought firm's own profit. Red: you can't afford it yet. Payments run ${st.payTerm} months; you keep ${Math.round(st.retention * 100)}% of its clients.</p>
       <div class="kv"><span>Buying in</span><b>${regs.length ? esc(regs.join(', ')) : 'Anywhere'}</b></div>
       <div class="chips"><button class="chip act" data-acqreg="1"${busy ? ' disabled' : ''}>Change regions</button></div>
       ${watch ? `<h3>Hold list</h3><ul class="offs">${watch}</ul>` : '<p class="muted">No firms on hold.</p>'}</section>

@@ -2,13 +2,19 @@
 
 A browser game where you build an accounting firm from a one-person practice toward the IPA 500: win clients, price services, hire staff, open offices, and acquire other firms month by month.
 
-Version 2.12.0: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, staff levels, the integration pause, smaller saves and partners.
+Version 2.12.1: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, staff levels, the integration pause, smaller saves and partners.
 
 ## Play
 
 Open `index.html` in any modern browser. There's no build step and no server.
 
 To host it online, enable **GitHub Pages** (Settings → Pages → Deploy from a branch → `main` / root). The game will be at `https://<username>.github.io/cpa-firm-simulator/`.
+
+## What's new in 2.12.1
+
+- **Fewer firms for sale while you're small.** Offers per year are about the square root of your revenue ÷ $100,000: 1 a year under $100K, 2 at $400K, about 3 at $1M, 5 at $2.5M, 10 at $10M, and at most 12. It was 6 a year at any size. Adjustable in Settings.
+- **Fewer hours for everyday services.** CAS Tier 1 takes 40 hours a client a year (was 60), CAS Tier 2 60 (was 84), personal returns 1.5 (was 2) and business returns 8 (was 10). Existing saves convert on load.
+- **Safer account saves.** A save that's cut off halfway (the app closed or lost signal) no longer leaves a broken copy in your claude.ai account; the last complete save stays in place.
 
 ## What's new in 2.12.0
 
