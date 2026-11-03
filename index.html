@@ -401,10 +401,12 @@ main:has(.stickybar){padding-bottom:230px}
 
   /* ---------- Office cost & crowding (phase 3 fills offices[]) ---------- */
   CPA.officeSpaceCost = (s, o) => o.owned ? o.desks * s.settings.upkeepPerDesk : o.desks * s.settings.rentPerDesk;
-  CPA.crowd = function (s, p, t) {
+  // heads: optional Map office id -> active people there (CPA.officeHeads), so a month counts each office once
+  CPA.officeHeads = (s, t) => { const m = new Map(); CPA.activePeople(s, t).forEach(q => { if (q.office != null) m.set(q.office, (m.get(q.office) || 0) + 1); }); return m; };
+  CPA.crowd = function (s, p, t, heads) {
     if (!p.office) return 1;
     const o = s.offices.find(x => x.id === p.office); if (!o) return 1;
-    const n = CPA.activePeople(s, t).filter(q => q.office === o.id).length;
+    const n = heads ? (heads.get(o.id) || 0) : CPA.activePeople(s, t).filter(q => q.office === o.id).length;
     return n > o.desks ? 1 - s.settings.crowdLoss : 1;
   };
 
@@ -421,14 +423,14 @@ main:has(.stickybar){padding-bottom:230px}
 
     // STAFF
     let payroll = 0, heads = 0, admH = 0, bkH = 0, cliH = 0, adminStaff = 0;
-    const people = CPA.activePeople(s, t);
+    const people = CPA.activePeople(s, t), offHeads = CPA.officeHeads(s, t);
     people.forEach(p => {
       const hc = p.hc || 1, role = CPA.ROLES[p.role] || ['General', 1, 0, 1, 160, 'Client'], hrs = CPA.hoursOf(s, p, role);
       payroll += (p.salary || 0) / 12 * hc; heads += hc;
       if (role[5] === 'Admin') { admH += hrs * hc * role[3]; adminStaff += hc; }
       else if (role[5] === 'None') { /* recruiters and HR: no client or admin work */ }
-      else if (role[5] === 'Bookkeeper') bkH += hrs * hc * CPA.outputOf(s, p) * CPA.crowd(s, p, t);
-      else cliH += hrs * hc * CPA.outputOf(s, p) * CPA.crowd(s, p, t);
+      else if (role[5] === 'Bookkeeper') bkH += hrs * hc * CPA.outputOf(s, p) * CPA.crowd(s, p, t, offHeads);
+      else cliH += hrs * hc * CPA.outputOf(s, p) * CPA.crowd(s, p, t, offHeads);
     });
     const bkWork = s.services.filter(x => x.slot === 1 || x.slot === 4).reduce((a, x) => a + x.clients * x.hpc, 0);
     cliH += Math.min(bkH, bkWork / yrF);
@@ -938,11 +940,12 @@ main:has(.stickybar){padding-bottom:230px}
     const adminLeft = s.prev.AB || 0;
     const cap = {}; groups.forEach(g => cap[g] = 0);
     let spread = 0, admH = 0, bkH = 0;
+    const offHeads = C.officeHeads(s, t);
     C.activePeople(s, t).forEach(p => {
-      const i = info(p), r = C.ROLES[p.role] || ['', 0, 0, 1, 160, 'Client'], hc = p.hc || 1, hrs = (p.hours || r[4]) * hc;
+      const i = info(p), r = C.ROLES[p.role] || ['', 0, 0, 1, 160, 'Client'], hc = p.hc || 1, hrs = (C.hoursOf ? C.hoursOf(s, p, r) : (p.hours || r[4])) * hc;
       if (r[5] === 'None') return;
       if (r[5] === 'Admin') { admH += hrs * r[3] * yrF; return; }
-      const h = hrs * C.outputOf(s, p) * C.crowd(s, p, t) * yrF;
+      const h = hrs * C.outputOf(s, p) * C.crowd(s, p, t, offHeads) * yrF;
       if (r[5] === 'Bookkeeper') { bkH += h; return; }
       const gs = i.lvl === 9 ? [] : i.groups.filter(g => og.has(g));
       if (!gs.length) spread += h; else gs.forEach(g => cap[g] += h / gs.length);
@@ -1597,9 +1600,8 @@ main:has(.stickybar){padding-bottom:230px}
     S = found || C.newGame({});
     if (!found) S.meta.savedAt = 0; // a brand-new game never wins over a save in your account
     C.advance(S); try { localStorage.setItem(KEY, C.serialize(S)); } catch (e) { } render();
-    initCloud();
-    // A first visit is a new game: offer the tutorial (a save found in your account later replaces this game).
-    if (!found && UI.askTutorial) UI.askTutorial(() => { if (C.played(S) === 0) startGame({ tutorial: true }); }, () => { });
+    // A first visit is a new game: offer the tutorial once we know no save is waiting in your account.
+    initCloud().then(() => { if (!found && C.played(S) === 0 && UI.askTutorial) UI.askTutorial(() => { if (C.played(S) === 0) startGame({ tutorial: true }); }, () => { }); });
   }
   try { window.claude && window.claude.hot && window.claude.hot.snapshot && window.claude.hot.snapshot(() => ({ save: S ? C.serialize(S) : null })); } catch (e) { }
   // Boot after every module script has registered (people screen loads after this file).
