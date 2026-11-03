@@ -2,7 +2,7 @@
 
 A browser game where you build an accounting firm from a one-person practice toward the IPA 500: win clients, price services, hire staff, open offices, and acquire other firms month by month.
 
-Version 2.10.0 completes version 2 (phases 1–10 of the build plan) plus the November 3, 2026 update.
+Version 2.11.0: version 2 (phases 1–10 of the build plan), the November 3, 2026 update, and staff levels, the integration pause and smaller saves.
 
 ## Play
 
